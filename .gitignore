@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtualenv
+venv/
+.env/
+.env.*        # quaisquer variações
+*.env         # segurança extra
+
+# Banco / dados locais
+*.db
+*.sqlite3
+
+# Logs e temporários
+*.log
+*.pid
+*.tmp
+*.cache
+*.bak
+
+# IDE/Editor
+.vscode/
+.idea/
+*.code-workspace
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Build / dist (se um dia gerar pacote)
+build/
+dist/
+*.egg-info/
+
+# Notebooks (se usar)
+.ipynb_checkpoints/
+
+# Matplotlib cache (se usar gráficos)
+**/Matplotlib/*
+
+# Windows
+desktop.ini

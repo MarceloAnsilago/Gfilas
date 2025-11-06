@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Imprimir Senhas{% endblock %}
+
+{% block extra_css %}
+<style>
+  .print-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .cartao-senha {
+    border: 2px solid #000;
+    background-color: #fff;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+
+  .cartao-header,
+  .cartao-footer {
+    background-color: #000;
+    color: #fff;
+    padding: 10px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .cartao-body {
+    padding: 18px 10px 22px;
+  }
+
+  .cartao-label {
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .cartao-numero {
+    font-size: 48px;
+    font-weight: 700;
+  }
+
+  @media print {
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    .sidebar,
+    .layout-shell {
+      display: block;
+    }
+
+    .print-toolbar,
+    form {
+      display: none !important;
+    }
+
+    .layout-main {
+      width: 100%;
+      padding: 0;
+    }
+
+    .cards-grid {
+      gap: 6px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="print-toolbar">
+  <div>
+    <h2 class="mb-1">Imprimir senhas</h2>
+    <p class="text-muted mb-0">Selecione a data desejada e imprima os cartões.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-danger" onclick="window.print()">Imprimir</button>
+    {% if datas_disponiveis %}
+      <a href="{{ url_for('web.imprimir', confirmar_exclusao=1) }}" class="btn btn-outline-danger">Excluir tudo</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  {% if datas_disponiveis %}
+    <form method="get" class="card-body row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label">Selecione a data com senhas aguardando</label>
+        <select name="data" class="form-select" onchange="this.form.submit()">
+          {% for data in datas_disponiveis %}
+            <option value="{{ data.valor }}" {% if data.valor == data_selecionada %}selected{% endif %}>
+              {{ data.label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary w-100">Carregar cartões</button>
+      </div>
+    </form>
+  {% else %}
+    <div class="card-body text-muted">
+      Nenhuma data possui senhas aguardando para impressão no momento.
+    </div>
+  {% endif %}
+</div>
+
+{% if confirmando_exclusao %}
+  <div class="alert alert-warning d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+    <div>
+      <strong>Atenção:</strong> as seguintes datas possuem senhas aguardando:
+      <span class="fw-semibold">{{ datas_legiveis | join(', ') }}</span>.
+      Se prosseguir, todas as senhas serão removidas do banco.
+    </div>
+    <form method="post" action="{{ url_for('web.excluir_todas_senhas') }}" class="d-flex gap-2">
+      <button type="submit" class="btn btn-danger">Excluir tudo agora</button>
+      <a href="{{ url_for('web.imprimir') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+  </div>
+{% endif %}
+
+{% if senhas %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">{{ titulo }}</h5>
+    <small class="text-muted">{{ senhas|length }} cartões prontos</small>
+  </div>
+
+  <div class="cards-grid">
+    {% for s in senhas %}
+      <div class="cartao-senha">
+        <div class="cartao-header">{{ s.unidade }}</div>
+        <div class="cartao-body">
+          <div class="cartao-label">SENHA</div>
+          <div class="cartao-numero">{{ s.senha }}</div>
+        </div>
+        <div class="cartao-footer">DATA {{ s.data_formatada }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% elif datas_disponiveis %}
+  <div class="alert alert-info">Nenhuma senha disponível para a data selecionada.</div>
+{% endif %}
+{% endblock %}

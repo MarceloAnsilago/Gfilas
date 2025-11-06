@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Chamar Senhas{% endblock %}
+
+{% block content %}
+<h2>Chamada de Senhas</h2>
+<p>Informe seu usuário e terminal para iniciar o atendimento das senhas aguardando.</p>
+
+<form method="post" class="card p-4 mb-4 shadow-sm">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label">Usuário</label>
+      <input type="text" name="usuario" class="form-control" value="{{ usuario }}" placeholder="Nome do atendente">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Terminal</label>
+      <input type="text" name="terminal" class="form-control" value="{{ terminal }}" placeholder="Ex: 1">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" name="acao" value="chamar" class="btn btn-primary w-100">Chamar próximo</button>
+    </div>
+  </div>
+</form>
+
+{% if chamada_aberta %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span class="text-muted d-block">Atendimento em andamento</span>
+          <h3 class="mb-0">Senha {{ "%03d"|format(chamada_aberta.senha) }}</h3>
+        </div>
+        <div class="text-end">
+          <span class="badge text-bg-dark">{{ chamada_aberta.unidade }}</span>
+          <span class="badge text-bg-secondary">{{ chamada_aberta.resposta or "chamando" }}</span>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <small class="text-muted d-block">Usuário</small>
+          <strong>{{ chamada_aberta.usuario or "N/D" }}</strong>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Terminal</small>
+          <strong>{{ chamada_aberta.terminal or "N/D" }}</strong>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Status</small>
+          <strong>{{ chamada_aberta.status }}</strong>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Atualizado em</small>
+          <strong>{{ chamada_aberta.atualizado_em or chamada_aberta.hora }}</strong>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer bg-light d-flex flex-wrap gap-2">
+      <form method="post" class="me-auto d-flex gap-2">
+        <input type="hidden" name="usuario" value="{{ usuario }}">
+        <input type="hidden" name="terminal" value="{{ terminal }}">
+        <button type="submit" name="acao" value="chamar_novamente" class="btn btn-outline-primary">Chamar novamente</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="usuario" value="{{ usuario }}">
+        <input type="hidden" name="terminal" value="{{ terminal }}">
+        <button type="submit" name="acao" value="compareceu" class="btn btn-success">Compareceu</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="usuario" value="{{ usuario }}">
+        <input type="hidden" name="terminal" value="{{ terminal }}">
+        <button type="submit" name="acao" value="nao_compareceu" class="btn btn-outline-secondary">Não compareceu</button>
+      </form>
+    </div>
+  </div>
+{% else %}
+  <div class="alert alert-info">Nenhuma senha está sendo atendida no momento.</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5>Próxima senha aguardando</h5>
+        {% if proxima_senha %}
+          <p class="display-6 mb-1">{{ "%03d"|format(proxima_senha.senha) }}</p>
+          <p class="text-muted mb-0">Unidade {{ proxima_senha.unidade }}</p>
+        {% else %}
+          <p class="text-muted mb-0">Fila vazia.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5>Resumo da fila</h5>
+        <p class="display-6 mb-1">{{ total_aguardando }}</p>
+        <p class="text-muted mb-0">senhas aguardando atendimento.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

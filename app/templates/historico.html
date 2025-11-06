@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stat-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    height: 100%;
+    box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+  }
+  .stat-card h5 {
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #475569;
+  }
+  .stat-card .value {
+    font-size: 32px;
+    font-weight: 700;
+  }
+  table td, table th {
+    vertical-align: middle;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Histórico e desempenho</h2>
+<p>Acompanhe o status das senhas e encerre manualmente qualquer atendimento que tenha ficado aberto.</p>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-4">
+    <div class="stat-card text-center">
+      <h5>Status das senhas</h5>
+      <canvas id="chart-status" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="stat-card text-center">
+      <h5>Respostas registradas</h5>
+      <canvas id="chart-resposta" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="stat-card text-center">
+      <h5>Atendentes ativos</h5>
+      {% if usuario_labels %}
+        <canvas id="chart-usuarios" height="220"></canvas>
+      {% else %}
+        <p class="mt-4 text-muted">Sem dados de usuário.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Chamadas em aberto</h5>
+    <span class="badge text-bg-info">{{ abertas|length }} em andamento</span>
+  </div>
+  <div class="card-body p-0">
+    {% if abertas %}
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Senha</th>
+              <th>Unidade</th>
+              <th>Usuário</th>
+              <th>Terminal</th>
+              <th>Atualizado em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in abertas %}
+              <tr>
+                <td>#{{ item.id }}</td>
+                <td><strong>{{ "%03d"|format(item.senha) }}</strong></td>
+                <td>{{ item.unidade or "UNIDADE" }}</td>
+                <td>{{ item.usuario or "N/D" }}</td>
+                <td>{{ item.terminal or "-" }}</td>
+                <td>{{ item.hora_legivel }}</td>
+                <td>
+                  <form method="post" class="d-inline">
+                    <input type="hidden" name="encerrar_id" value="{{ item.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Encerrar como não compareceu</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="m-3 text-muted">Nenhuma chamada aberta no momento.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Últimas senhas encerradas</h5>
+    <span class="text-muted">Mostrando até 20 registros</span>
+  </div>
+  <div class="card-body p-0">
+    {% if encerradas %}
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Senha</th>
+              <th>Resposta</th>
+              <th>Usuário</th>
+              <th>Terminal</th>
+              <th>Unidade</th>
+              <th>Atualizado em</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in encerradas %}
+              <tr>
+                <td><strong>{{ "%03d"|format(item.senha) }}</strong></td>
+                <td>{{ item.resposta or "-" }}</td>
+                <td>{{ item.usuario or "N/D" }}</td>
+                <td>{{ item.terminal or "-" }}</td>
+                <td>{{ item.unidade or "UNIDADE" }}</td>
+                <td>{{ item.hora_legivel }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="m-3 text-muted">Nenhum registro encerrado encontrado.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script>
+  const chartsData = {
+    status: {
+      labels: {{ status_labels|tojson }},
+      values: {{ status_values|tojson }}
+    },
+    resposta: {
+      labels: {{ resposta_labels|tojson }},
+      values: {{ resposta_values|tojson }}
+    },
+    usuarios: {
+      labels: {{ usuario_labels|tojson }},
+      values: {{ usuario_values|tojson }}
+    }
+  };
+
+  const baseConfig = (labels, values, colors) => ({
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+
+  const palette = ['#2563eb', '#10b981', '#f97316', '#facc15', '#ec4899', '#8b5cf6', '#0ea5e9', '#f43f5e'];
+
+  if (chartsData.status.values.length) {
+    new Chart(
+      document.getElementById('chart-status'),
+      baseConfig(chartsData.status.labels, chartsData.status.values, palette)
+    );
+  }
+  if (chartsData.resposta.values.length) {
+    new Chart(
+      document.getElementById('chart-resposta'),
+      baseConfig(chartsData.resposta.labels, chartsData.resposta.values, palette.slice().reverse())
+    );
+  }
+  if (chartsData.usuarios.values.length) {
+    new Chart(
+      document.getElementById('chart-usuarios'),
+      baseConfig(chartsData.usuarios.labels, chartsData.usuarios.values, palette.slice(0, chartsData.usuarios.labels.length))
+    );
+  }
+</script>
+{% endblock %}

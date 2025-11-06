@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Gerar Senhas{% endblock %}
+
+{% block content %}
+<h2>Gerar Senhas</h2>
+<p>Crie senhas em lote para a unidade e data escolhidas.</p>
+
+<form method="POST" class="mt-4">
+  <div class="row mb-3">
+    <div class="col-md-5">
+      <label class="form-label">Unidade</label>
+      <input type="text" name="unidade" class="form-control" placeholder="Nome da unidade" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Data das senhas</label>
+      <input type="date" name="data_execucao" class="form-control" value="{{ data_padrao }}" required>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <label class="form-label">Senha inicial</label>
+      <input type="number" name="senha_inicial" class="form-control" value="1" min="1" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Senha final</label>
+      <input type="number" name="senha_final" class="form-control" value="50" min="1" required>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Gerar Senhas</button>
+</form>
+
+<hr>
+
+<p class="mt-4"><strong>Total de senhas no banco:</strong> {{ total_senhas }}</p>
+
+{% endblock %}

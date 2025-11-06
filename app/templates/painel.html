@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Painel de Senhas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#0f172a; --muted:#475569; --line:#e5e7eb;
+      --card:#ffffff; --card2:#f8fafc; --shadow:0 20px 40px rgba(2,6,23,.12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--fg); min-height:100vh; display:flex; flex-direction:column}
+    .top-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 420px;
+      gap:20px;
+      align-items:stretch;
+      padding:20px 40px 0;
+    }
+    .hero-title{
+      font-size:42px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      color:#0f172a;
+      background:rgba(15,23,42,.08);
+      padding:16px 32px;
+      border-radius:24px;
+      box-shadow:0 12px 30px rgba(15,23,42,.1);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .side-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:20px;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:4px;
+    }
+    .side-card h2{
+      margin:0;
+      font-size:20px;
+      text-transform:uppercase;
+      letter-spacing:.3px;
+    }
+    .side-card p{
+      margin:0;
+      color:#64748b;
+      font-size:14px;
+    }
+    .wrap{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:20px; align-items:start; padding:18px 40px 30px}
+    .video{position:relative; background:#000; border-radius:16px; overflow:hidden; box-shadow:var(--shadow); aspect-ratio:16/9; align-self:start; display:flex}
+    .video iframe,.video video{width:100%; height:100%; border:0; object-fit:cover}
+    .side{display:flex; flex-direction:column; gap:16px}
+    .list{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:var(--shadow); flex:1; overflow:auto}
+    .list::-webkit-scrollbar{width:10px}
+    .list::-webkit-scrollbar-thumb{background:#cbd5f5; border-radius:6px}
+    .card{background:var(--card2); border:1px solid var(--line); border-radius:18px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:16px; box-shadow:0 8px 20px rgba(15,23,42,.08)}
+    .card-icon{width:52px; height:52px; border-radius:16px; background:#e0f2fe; display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; box-shadow:0 10px 24px rgba(14,165,233,.15)}
+    .card-icon::before{content:""; width:10px; height:10px; background:#0369a1; border-radius:50%; display:block}
+    .card-body{flex:1; display:flex; flex-direction:column; gap:10px}
+    .card-top{display:flex; align-items:center; justify-content:space-between; gap:14px}
+    .senha-pill{font-size:26px; font-weight:900; letter-spacing:1px}
+    .status-pill{font-variant-numeric:tabular-nums; background:#e2e8f0; border-radius:999px; padding:6px 16px; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:.6px}
+    .status-pill.ok{background:#ecfdf5; color:#047857}
+    .status-pill.no{background:#fef2f2; color:#b91c1c}
+    .card-meta{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; color:var(--muted)}
+    .footer{display:flex; gap:10px}
+    .btn{appearance:none; border:1px solid var(--line); background:#fff; color:var(--fg); padding:10px 12px; border-radius:10px; cursor:pointer}
+    .btn:hover{background:#f8fafc}
+    .modal-backdrop{position:fixed; inset:0; background:rgba(15,23,42,.75); display:none; align-items:center; justify-content:center; z-index:10}
+    .modal{background:#fff; padding:80px 120px; border-radius:28px; text-align:center; box-shadow:0 28px 80px rgba(15,23,42,.5); min-width:720px; max-width:80vw}
+    .modal .titulo{font-size:28px; font-weight:800; letter-spacing:.5px; margin-bottom:12px}
+    .modal .senha{font-size:192px; font-weight:900; letter-spacing:8px; line-height:.95}
+    .modal .meta{font-size:32px; color:var(--muted); margin-top:20px}
+    .modal .meta.atendente{font-size:26px; margin-top:12px; opacity:.85}
+    @supports not (aspect-ratio: 16/9){
+      .video{padding-top:56.25%; display:block}
+      .video iframe,.video video{position:absolute; inset:0; width:100%; height:100%}
+    }
+    @media(max-width:1100px){
+      .top-banner{font-size:32px; padding:24px 16px 8px}
+      .wrap{grid-template-columns:1fr; grid-auto-rows:minmax(340px,auto); height:auto}
+      .video{min-height:320px}
+      .modal{padding:40px 20px; min-width:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="top-row">
+    <div class="hero-title">Pegue sua senha</div>
+    <div class="side-card">
+      <h2>Senhas chamadas</h2>
+      <p class="text-muted" style="margin:4px 0 0; color:#64748b;">Atualiza automaticamente</p>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="video">
+      {{ video_embed|safe }}
+    </div>
+    <div class="side">
+      <div id="lista" class="list"></div>
+    </div>
+  </div>
+
+  <div id="backdrop" class="modal-backdrop">
+    <div class="modal">
+      <div class="titulo">Senha chamada</div>
+      <div id="modal-senha" class="senha">000</div>
+      <div id="modal-meta" class="meta">UNIDADE - Terminal</div>
+      <div id="modal-atendente" class="meta atendente" style="display:none;">Atendimento</div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const STATUS_URL = "{{ url_for('web.painel_status') }}";
+    const lista = document.getElementById('lista');
+    const backdrop = document.getElementById('backdrop');
+    const elSenha = document.getElementById('modal-senha');
+    const elMeta  = document.getElementById('modal-meta');
+    const elAtendente = document.getElementById('modal-atendente');
+    const btnTest = document.getElementById('btn-test');
+    const btnReload = document.getElementById('btn-reload');
+
+    let lastKey = null;
+    const beepEnabled = true;
+    const voiceEnabled = true;
+
+    const z3 = (n)=> (n==null ? "000" : String(parseInt(n||0,10)).padStart(3,'0'));
+
+    async function solicitarStatus(){
+      try{
+        const resp = await fetch(STATUS_URL + '?ts=' + Date.now(), {cache:'no-store'});
+        if(resp.ok){ return await resp.json(); }
+      }catch(err){ console.error(err); }
+      return null;
+    }
+
+    function renderCards(items){
+      const dados = (items||[]).filter(it => (it.status||'').toLowerCase()==='encerrado');
+      lista.innerHTML = '';
+      dados.forEach(it=>{
+        const senha = z3(it.senha);
+        const resp  = (it.resposta||'').toLowerCase();
+        const hora  = it.hora ? it.hora.replace('T',' ').slice(0,19) : '';
+        const unidade = it.unidade || 'UNIDADE';
+        const term = (it.terminal ?? '-');
+        const pillClass = resp.includes('compareceu') ? 'ok' : (resp.includes('nao') ? 'no' : '');
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-icon"></div>
+          <div class="card-body">
+            <div class="card-top">
+              <div class="senha-pill">${senha}</div>
+              <div class="status-pill ${pillClass}">${resp || '-'}</div>
+            </div>
+            <div class="card-meta">
+              <span>${unidade}</span>
+              <span>T${term} - ${hora}</span>
+            </div>
+          </div>
+        `;
+        lista.appendChild(card);
+      });
+    }
+
+    function beep(){
+      if(!beepEnabled) return;
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+        o.start();
+        setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25); o.stop(ctx.currentTime + 0.28); ctx.close(); }, 260);
+      }catch(e){ console.error(e); }
+    }
+
+    function falar(texto){
+      if(!voiceEnabled) return;
+      try{
+        const u = new SpeechSynthesisUtterance(texto);
+        u.lang='pt-BR'; u.rate=1; u.pitch=1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }catch(e){ console.error(e); }
+    }
+
+    function showModal(senha, unidade, terminal, atendente){
+      const senhaFormatada = z3(senha);
+      const destinoTerminal = terminal ? `terminal ${terminal}` : 'terminal de atendimento';
+      const nomeAtendente = (atendente ?? '').trim();
+      elSenha.textContent = senhaFormatada;
+      elMeta.textContent  = `${unidade||'UNIDADE'} - Terminal ${terminal ?? '-'}`;
+      if(nomeAtendente){
+        elAtendente.textContent = `Atendimento: ${nomeAtendente}`;
+        elAtendente.style.display = '';
+      }else{
+        elAtendente.textContent = '';
+        elAtendente.style.display = 'none';
+      }
+      backdrop.style.display = 'flex';
+      beep();
+      const numeroFalado = parseInt(senha, 10) || 0;
+      setTimeout(()=>falar(`Senha ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
+      setTimeout(()=>backdrop.style.display='none', 4500);
+    }
+
+    async function tick(){
+      const status = await solicitarStatus();
+      if(!status) return;
+
+      renderCards(status.ultimas_senhas || []);
+      const atual = status.senha_atual;
+      const respostaAtual = (atual?.resposta || '').toLowerCase();
+      const deveAnunciar = respostaAtual.startsWith('chamando');
+      const chave = atual
+        ? [
+            atual.id ?? `${atual.status}-${atual.senha}`,
+            (atual.status || '').toLowerCase(),
+            (atual.resposta || '').toLowerCase(),
+            atual.atualizado_em || ''
+          ].join('|')
+        : null;
+      if(atual && deveAnunciar && chave !== lastKey){
+        showModal(atual.senha, atual.unidade, atual.terminal, atual.usuario);
+      }
+      if(chave !== lastKey){ lastKey = chave; }
+    }
+
+    const POLLING_INTERVAL = 1000;
+    let pollingId = null;
+
+    function iniciar(){
+      if(pollingId !== null) return;
+      tick();
+      pollingId = setInterval(()=>tick(), POLLING_INTERVAL);
+    }
+
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ tick(); } });
+
+    iniciar();
+  })();
+  </script>
+</body>
+</html>

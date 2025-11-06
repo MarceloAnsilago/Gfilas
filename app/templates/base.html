@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Gerenciador de Senhas{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-bx1A7ez96lJrjS7q0dAPi5u8v8os75G9H6ar5tYMb4JrVF5HK/8H0Gkj2eH8R71a9DHzBr2A+qsSVqS+5l9kwg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
+  <style>
+    :root {
+      --sidebar-bg: #0b1220;
+      --sidebar-bg-light: #111a2d;
+      --sidebar-active: #2563eb;
+      --sidebar-color: #cbd5f5;
+    }
+    .toggle-icon.rotated { transform: rotate(180deg); }
+    .layout-shell {
+      min-height: 100vh;
+      background: #f6f8fc;
+    }
+    .sidebar {
+      width: 230px;
+      background: var(--sidebar-bg);
+      color: #fff;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1020;
+      display: flex;
+      flex-direction: column;
+      transition: width .2s ease;
+    }
+    .sidebar.collapsed {
+      width: 64px;
+    }
+    .sidebar .brand {
+      padding: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar.collapsed .brand-text {
+      display: none;
+    }
+    .sidebar .toggle-line {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--sidebar-active);
+      color: #fff;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(37,99,235,0.35);
+    }
+    .sidebar .nav-link {
+      color: var(--sidebar-color);
+      border-radius: 12px;
+      margin: 4px 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      transition: background .2s ease, color .2s ease;
+    }
+    .sidebar .nav-link i {
+      font-size: 1.2rem;
+    }
+    .sidebar .nav-link.active {
+      background: var(--sidebar-active);
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(37,99,235,0.35);
+    }
+    .sidebar .nav-link:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+    .sidebar.collapsed .nav-link {
+      justify-content: center;
+      margin: 8px auto;
+      padding: 10px;
+      width: 48px;
+      border-radius: 50%;
+    }
+    .sidebar.collapsed .label {
+      display: none;
+    }
+    @media(max-width: 768px){
+      .layout-shell { flex-direction: column; }
+      .sidebar,
+      .sidebar.collapsed { width: 100%; position: relative; }
+      .layout-main { margin-left: 0 !important; }
+    }
+    @media print {
+      body {
+        background: #fff;
+      }
+      .sidebar,
+      .brand,
+      #sidebarToggle {
+        display: none !important;
+      }
+      .layout-main {
+        padding: 0 !important;
+      }
+      .layout-shell {
+        display: block;
+      }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="layout-shell d-flex">
+    <nav id="sidebar" class="sidebar text-white">
+      <div class="brand position-relative">
+        <span class="brand-text">Painel</span>
+        <button class="toggle-line" id="sidebarToggle" type="button" aria-label="Colapsar menu">
+          <i class="bx bx-chevron-left toggle-icon"></i>
+        </button>
+      </div>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.chamar' %}active{% endif %}" href="{{ url_for('web.chamar') }}">
+            <i class="bx bxs-bell-ring"></i>
+            <span class="label">Chamar</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.gerar_senhas' %}active{% endif %}" href="{{ url_for('web.gerar_senhas') }}">
+            <i class="bx bxs-layer"></i>
+            <span class="label">Gerar Senhas</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.imprimir' %}active{% endif %}" href="{{ url_for('web.imprimir') }}">
+            <i class="bx bxs-printer"></i>
+            <span class="label">Imprimir</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.historico' %}active{% endif %}" href="{{ url_for('web.historico') }}">
+            <i class="bx bxs-doughnut-chart"></i>
+            <span class="label">Historico</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.painel' %}active{% endif %}" href="{{ url_for('web.painel') }}">
+            <i class="bx bxs-tv"></i>
+            <span class="label">Painel</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <main class="layout-main p-4 flex-grow-1" style="margin-left: 230px;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script>
+    (function(){
+      const sidebar = document.getElementById("sidebar");
+      const toggle = document.getElementById("sidebarToggle");
+      const main = document.querySelector(".layout-main");
+      if(!sidebar || !toggle) return;
+
+      const key = "sidebar-collapsed";
+
+      function setState(collapsed){
+        if(collapsed){
+          sidebar.classList.add("collapsed");
+          toggle.querySelector(".toggle-icon").classList.add("rotated");
+          main.style.marginLeft = "64px";
+        }else{
+          sidebar.classList.remove("collapsed");
+          toggle.querySelector(".toggle-icon").classList.remove("rotated");
+          main.style.marginLeft = "230px";
+        }
+      }
+
+      const initial = localStorage.getItem(key) === "1";
+      setState(initial);
+
+      toggle.addEventListener("click", () => {
+        const nextState = !sidebar.classList.contains("collapsed");
+        setState(nextState);
+        localStorage.setItem(key, nextState ? "1" : "0");
+      });
+    })();
+  </script>
+</body>
+</html>
