@@ -1,5 +1,8 @@
 from flask import Flask
-from flask_bootstrap import Bootstrap
+try:
+    from flask_bootstrap import Bootstrap
+except Exception:  # Tolerate absence/incompatibility in production
+    Bootstrap = None
 from dotenv import load_dotenv
 from pathlib import Path
 from . import db
@@ -11,7 +14,11 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
 
-    Bootstrap(app)
+    if Bootstrap is not None:
+        try:
+            Bootstrap(app)
+        except Exception:
+            pass
 
     with app.app_context():
         db.init_db()
