@@ -225,25 +225,13 @@ def imprimir():
     elif not datas_disponiveis:
         flash("Nao ha senhas aguardando para imprimir.", "info")
 
-    confirmando_exclusao = request.args.get("confirmar_exclusao") == "1" and bool(datas_disponiveis)
-    datas_legiveis = [item["label"] for item in datas_fmt]
-
     return render_template(
         "imprimir.html",
         titulo=titulo,
         senhas=senhas,
         datas_disponiveis=datas_fmt,
         data_selecionada=data_selecionada,
-        confirmando_exclusao=confirmando_exclusao,
-        datas_legiveis=datas_legiveis,
     )
-
-
-@bp.route("/imprimir/excluir", methods=["POST"])
-def excluir_todas_senhas():
-    db.excluir_todas_senhas()
-    flash("Todas as senhas foram excluidas do banco.", "success")
-    return redirect(url_for("web.imprimir"))
 
 
 @bp.route("/historico", methods=["GET", "POST"])
