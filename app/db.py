@@ -117,6 +117,44 @@ def listar_ultimas_encerradas(limite: int = 8):
         ).fetchall()
     return [dict(row) for row in rows]
 
+def listar_sessoes_por_data():
+    """Agrupa as senhas existentes por data."""
+    with conectar() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                DATE(hora) AS data,
+                COUNT(*) AS total,
+                MIN(senha) AS menor,
+                MAX(senha) AS maior,
+                SUM(CASE WHEN status = 'aguardando' THEN 1 ELSE 0 END) AS aguardando,
+                SUM(CASE WHEN status = 'aberto' THEN 1 ELSE 0 END) AS aberto,
+                SUM(CASE WHEN status = 'encerrado' THEN 1 ELSE 0 END) AS encerradas
+            FROM senha
+            GROUP BY data
+            ORDER BY data DESC
+            """
+        ).fetchall()
+    return [
+        {
+            "data": row["data"],
+            "total": row["total"],
+            "menor": row["menor"],
+            "maior": row["maior"],
+            "aguardando": row["aguardando"],
+            "aberto": row["aberto"],
+            "encerradas": row["encerradas"],
+        }
+        for row in rows
+    ]
+
+def excluir_senhas_por_data(data_iso: str) -> int:
+    """Remove todas as senhas associadas à data informada."""
+    with conectar() as conn:
+        cursor = conn.execute("DELETE FROM senha WHERE DATE(hora) = ?", (data_iso,))
+        conn.commit()
+    return cursor.rowcount
+
 def listar_todas_senhas():
     """Retorna todas as senhas com campos principais para relatórios."""
     with conectar() as conn:

@@ -143,7 +143,47 @@ def gerar_senhas():
 
     total_senhas = db.contar_senhas()
     data_padrao = date.today().isoformat()
-    return render_template("gerar.html", total_senhas=total_senhas, data_padrao=data_padrao)
+    sessoes_brutas = db.listar_sessoes_por_data()
+    sessoes = []
+    for sessao in sessoes_brutas:
+        data_iso = sessao.get("data")
+        sessoes.append(
+            {
+                **sessao,
+                "data_legivel": _formatar_data_local(data_iso) if data_iso else "",
+            }
+        )
+    return render_template(
+        "gerar.html",
+        total_senhas=total_senhas,
+        data_padrao=data_padrao,
+        sessoes=sessoes,
+    )
+
+
+@bp.route("/gerar/excluir-sessao", methods=["POST"])
+def excluir_sessao_senhas():
+    data_str = (request.form.get("data_execucao") or "").strip()
+    if not data_str:
+        flash("Informe a data da sessão que deseja remover.", "warning")
+        return redirect(url_for("web.gerar_senhas"))
+
+    try:
+        data_formatada = datetime.strptime(data_str, "%Y-%m-%d").date()
+    except ValueError:
+        flash("Informe uma data válida.", "warning")
+        return redirect(url_for("web.gerar_senhas"))
+
+    removidas = db.excluir_senhas_por_data(data_str)
+    if removidas:
+        flash(
+            f"Sessão de {data_formatada.strftime('%d/%m/%Y')} removida ({removidas} senhas).",
+            "success",
+        )
+    else:
+        flash("Nenhuma senha encontrada para essa data.", "info")
+
+    return redirect(url_for("web.gerar_senhas"))
 
 
 @bp.route("/imprimir", methods=["GET"])

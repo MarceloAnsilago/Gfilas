@@ -3,37 +3,97 @@
 {% block title %}Gerar Senhas{% endblock %}
 
 {% block content %}
-<h2>Gerar Senhas</h2>
-<p>Crie senhas em lote para a unidade e data escolhidas.</p>
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between mb-3">
+      <div>
+        <h2 class="card-title h4 mb-1">Gerar Senhas</h2>
+        <p class="card-text text-muted mb-0">Crie senhas em lote para a unidade e data escolhidas.</p>
+      </div>
+    </div>
 
-<form method="POST" class="mt-4">
-  <div class="row mb-3">
-    <div class="col-md-5">
-      <label class="form-label">Unidade</label>
-      <input type="text" name="unidade" class="form-control" placeholder="Nome da unidade" required>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Data das senhas</label>
-      <input type="date" name="data_execucao" class="form-control" value="{{ data_padrao }}" required>
-    </div>
+    <form method="POST" class="mt-3">
+      <div class="row mb-3">
+        <div class="col-md-5">
+          <label class="form-label">Unidade</label>
+          <input type="text" name="unidade" class="form-control" placeholder="Nome da unidade" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Data das senhas</label>
+          <input type="date" name="data_execucao" class="form-control" value="{{ data_padrao }}" required>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Senha inicial</label>
+          <input type="number" name="senha_inicial" class="form-control" value="1" min="1" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Senha final</label>
+          <input type="number" name="senha_final" class="form-control" value="50" min="1" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Gerar Senhas</button>
+    </form>
   </div>
+</div>
 
-  <div class="row mb-3">
-    <div class="col-md-3">
-      <label class="form-label">Senha inicial</label>
-      <input type="number" name="senha_inicial" class="form-control" value="1" min="1" required>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Senha final</label>
-      <input type="number" name="senha_final" class="form-control" value="50" min="1" required>
-    </div>
-  </div>
-
-  <button type="submit" class="btn btn-primary">Gerar Senhas</button>
-</form>
+<p class="mt-2"><strong>Total de senhas no banco:</strong> {{ total_senhas }}</p>
 
 <hr>
 
-<p class="mt-4"><strong>Total de senhas no banco:</strong> {{ total_senhas }}</p>
+<div class="card mt-4">
+  <div class="card-header">Sessões geradas por data</div>
+  <div class="card-body">
+    {% if sessoes %}
+      <div class="row">
+        {% for sessao in sessoes %}
+          {% set titulo_sessao = (sessao.data_legivel or sessao.data) | default("esta sessão") %}
+          <div class="col-md-6 mb-3">
+            <div class="card h-100 border-secondary">
+              <div class="card-body">
+                <h5 class="card-title mb-2">{{ titulo_sessao }}</h5>
+                <p class="card-text mb-1">
+                  <strong>{{ sessao.total }}</strong> senhas geradas
+                </p>
+                <p class="card-text text-muted small mb-0">
+                  Faixa {{ sessao.menor or 0 }} – {{ sessao.maior or 0 }}
+                  {% if sessao.aguardando %} · {{ sessao.aguardando }} aguardando{% endif %}
+                  {% if sessao.aberto %} · {{ sessao.aberto }} em atendimento{% endif %}
+                  {% if sessao.encerradas %} · {{ sessao.encerradas }} encerradas{% endif %}
+                </p>
+              </div>
+              <div class="card-footer bg-transparent border-top-0 px-3 pb-3 pt-0 d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2 align-items-center">
+                  <form method="POST" action="{{ url_for('web.excluir_sessao_senhas') }}" class="m-0">
+                    <input type="hidden" name="data_execucao" value="{{ sessao.data or '' }}">
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-outline-danger"
+                      onclick='return confirm("Confirma apagar a sessão de {{ titulo_sessao }}?");'
+                    >
+                      Excluir sessão
+                    </button>
+                  </form>
+                  <a
+                    href="{{ url_for('web.imprimir', data=sessao.data) if sessao.data else url_for('web.imprimir') }}"
+                    class="btn btn-sm btn-outline-primary"
+                  >
+                    Ir para impressão
+                  </a>
+                </div>
+                <small class="text-muted">faixa {{ sessao.menor or 0 }} – {{ sessao.maior or 0 }}</small>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="mb-0 text-muted">Nenhuma sessão registrada até o momento.</p>
+    {% endif %}
+  </div>
+</div>
 
 {% endblock %}
