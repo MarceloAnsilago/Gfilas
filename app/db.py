@@ -120,33 +120,65 @@ def listar_ultimas_encerradas(limite: int = 8):
 def listar_sessoes_por_data():
     """Agrupa as senhas existentes por data."""
     with conectar() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                DATE(hora) AS data,
-                COUNT(*) AS total,
-                MIN(senha) AS menor,
-                MAX(senha) AS maior,
-                SUM(CASE WHEN status = 'aguardando' THEN 1 ELSE 0 END) AS aguardando,
-                SUM(CASE WHEN status = 'aberto' THEN 1 ELSE 0 END) AS aberto,
-                SUM(CASE WHEN status = 'encerrado' THEN 1 ELSE 0 END) AS encerradas
-            FROM senha
-            GROUP BY data
-            ORDER BY data DESC
-            """
-        ).fetchall()
-    return [
-        {
-            "data": row["data"],
-            "total": row["total"],
-            "menor": row["menor"],
-            "maior": row["maior"],
-            "aguardando": row["aguardando"],
-            "aberto": row["aberto"],
-            "encerradas": row["encerradas"],
-        }
-        for row in rows
-    ]
+        rows = conn.execute("SELECT senha, hora, status FROM senha").fetchall()
+
+    sessoes: dict[str, dict] = {}
+    for row in rows:
+        data_iso = _extrair_data_iso(row["hora"])
+        if not data_iso:
+            continue
+        sessao = sessoes.setdefault(
+            data_iso,
+            {
+                "data": data_iso,
+                "total": 0,
+                "menor": None,
+                "maior": None,
+                "aguardando": 0,
+                "aberto": 0,
+                "encerradas": 0,
+            },
+        )
+        sessao["total"] += 1
+        senha_valor = row["senha"]
+        if isinstance(senha_valor, int):
+            if sessao["menor"] is None or senha_valor < sessao["menor"]:
+                sessao["menor"] = senha_valor
+            if sessao["maior"] is None or senha_valor > sessao["maior"]:
+                sessao["maior"] = senha_valor
+        status = (row["status"] or "").lower()
+        if status == "aguardando":
+            sessao["aguardando"] += 1
+        elif status == "aberto":
+            sessao["aberto"] += 1
+        elif status == "encerrado":
+            sessao["encerradas"] += 1
+
+    return sorted(sessoes.values(), key=lambda data_item: data_item["data"], reverse=True)
+
+
+def _extrair_data_iso(valor_iso: str | None) -> str | None:
+    """Extrai a parte da data (YYYY-MM-DD) do timestamp armazenado."""
+    if not valor_iso:
+        return None
+
+    try:
+        registro = datetime.fromisoformat(valor_iso)
+    except ValueError:
+        if "T" in valor_iso:
+            data_parte = valor_iso.split("T", 1)[0]
+        elif " " in valor_iso:
+            data_parte = valor_iso.split(" ", 1)[0]
+        else:
+            data_parte = valor_iso[:10]
+        return data_parte if data_parte else None
+
+    if registro.tzinfo is None:
+        registro = FUSO_HORARIO.localize(registro)
+    else:
+        registro = registro.astimezone(FUSO_HORARIO)
+
+    return registro.date().isoformat()
 
 def excluir_senhas_por_data(data_iso: str) -> int:
     """Remove todas as senhas associadas à data informada."""
