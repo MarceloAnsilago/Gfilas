@@ -158,27 +158,27 @@ def listar_sessoes_por_data():
 
 
 def _extrair_data_iso(valor_iso: str | None) -> str | None:
-    """Extrai a parte da data (YYYY-MM-DD) do timestamp armazenado."""
+    """Extrai YYYY-MM-DD sem alterar o dia original do timestamp."""
     if not valor_iso:
         return None
 
-    try:
-        registro = datetime.fromisoformat(valor_iso)
-    except ValueError:
-        if "T" in valor_iso:
-            data_parte = valor_iso.split("T", 1)[0]
-        elif " " in valor_iso:
-            data_parte = valor_iso.split(" ", 1)[0]
-        else:
-            data_parte = valor_iso[:10]
-        return data_parte if data_parte else None
-
-    if registro.tzinfo is None:
-        registro = FUSO_HORARIO.localize(registro)
+    if "T" in valor_iso:
+        data_parte = valor_iso.split("T", 1)[0]
+    elif " " in valor_iso:
+        data_parte = valor_iso.split(" ", 1)[0]
     else:
-        registro = registro.astimezone(FUSO_HORARIO)
+        data_parte = valor_iso
 
-    return registro.date().isoformat()
+    data_parte = data_parte.strip()
+    if len(data_parte) >= 10:
+        data_parte = data_parte[:10]
+
+    try:
+        datetime.strptime(data_parte, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+    return data_parte
 
 def excluir_senhas_por_data(data_iso: str) -> int:
     """Remove todas as senhas associadas à data informada."""
