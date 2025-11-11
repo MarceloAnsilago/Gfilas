@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from collections import Counter
+import logging
 import os
 from urllib.parse import parse_qs, urlparse
 
@@ -7,10 +8,28 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for,
 
 from . import db
 
+logger = logging.getLogger(__name__)
+
+
+def _read_env_int(name: str, fallback: int) -> int:
+    raw = os.getenv(name)
+    if not raw:
+        return fallback
+    try:
+        return int(raw.strip())
+    except ValueError:
+        logger.warning("Invalid value %r for %s; using fallback %s", raw, name, fallback)
+        return fallback
+
+
 DEFAULT_UNIDADE = "UNIDADE"
 DEFAULT_USUARIO = "admin"
 DEFAULT_PLAYLIST_ID = "PLrBhE4oLMMj95y5nobzQgDT8ygY-Pqbk3"
-MAX_PAINEL_ULTIMAS = int(os.getenv("PAINEL_MAX_ULTIMAS", "8"))
+FIELD_LABELS = {
+    "senha_inicial": "senha inicial",
+    "senha_final": "senha final",
+}
+MAX_PAINEL_ULTIMAS = _read_env_int("PAINEL_MAX_ULTIMAS", 8)
 
 bp = Blueprint("web", __name__)
 
@@ -112,8 +131,16 @@ def chamar():
 def gerar_senhas():
     if request.method == "POST":
         unidade = request.form.get("unidade", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
-        senha_inicial = int(request.form.get("senha_inicial", 1))
-        senha_final = int(request.form.get("senha_final", 50))
+        try:
+            senha_inicial = _parse_int_from_form(request.form, "senha_inicial", 1)
+            senha_final = _parse_int_from_form(request.form, "senha_final", 50)
+        except ValueError as exc:
+            field_label = FIELD_LABELS.get(exc.args[0], exc.args[0])
+            flash(
+                f"O campo {field_label} precisa ser um número inteiro válido.",
+                "warning",
+            )
+            return redirect(url_for("web.gerar_senhas"))
         data_str = request.form.get("data_execucao") or date.today().isoformat()
 
         try:
@@ -126,18 +153,30 @@ def gerar_senhas():
             flash("Aviso: a senha final deve ser maior ou igual a inicial.", "warning")
             return redirect(url_for("web.gerar_senhas"))
 
+        if senha_inicial < 1 or senha_final < 1:
+            flash("Informe valores positivos para a faixa de senhas.", "warning")
+            return redirect(url_for("web.gerar_senhas"))
+
         inseridas, duplicadas = 0, 0
+        iso_data = data_escolhida.isoformat()
         for numero in range(senha_inicial, senha_final + 1):
-            if db.senha_existe(numero):
+            if db.senha_existe(numero, iso_data):
                 duplicadas += 1
                 continue
             db.inserir_senha(numero, unidade, data_execucao=data_escolhida)
             inseridas += 1
 
+        formatted_date = data_escolhida.strftime("%d/%m/%Y")
         if inseridas:
-            flash(f"Sucesso: {inseridas} senhas geradas com sucesso!", "success")
+            flash(
+                f"Sucesso: {inseridas} senhas geradas com sucesso para {formatted_date}.",
+                "success",
+            )
         if duplicadas:
-            flash(f"Info: {duplicadas} senhas ja existiam.", "info")
+            flash(
+                f"Info: {duplicadas} senhas ja existiam para {formatted_date}.",
+                "info",
+            )
 
         return redirect(url_for("web.gerar_senhas"))
 
@@ -237,8 +276,55 @@ def imprimir():
 @bp.route("/historico", methods=["GET", "POST"])
 def historico():
     registros = db.listar_todas_senhas()
+    sessoes_brutas = db.listar_sessoes_por_data()
+    sessoes = []
+    for sessao in sessoes_brutas:
+        data_iso = sessao.get("data")
+        sessoes.append(
+            {
+                **sessao,
+                "data_legivel": _formatar_data_local(data_iso) if data_iso else "",
+            }
+        )
+    sessao_padrao = sessoes[0]["data"] if sessoes else None
+    sessao_data = request.args.get("sessao_data") or sessao_padrao
 
     if request.method == "POST":
+        acao = (request.form.get("acao") or "").strip().lower()
+        if acao == "encerrar_sequencia":
+            inicio_raw = (request.form.get("senha_inicio") or "").strip()
+            final_raw = (request.form.get("senha_final") or "").strip()
+            if not inicio_raw.isdigit() or not final_raw.isdigit():
+                flash("Informe valores inteiros válidos para o intervalo.", "warning")
+                return redirect(url_for("web.historico"))
+
+            inicio = int(inicio_raw)
+            final = int(final_raw)
+            if inicio < 1 or final < 1:
+                flash("Os números devem ser positivos.", "warning")
+                return redirect(url_for("web.historico"))
+            if final < inicio:
+                flash("A senha final precisa ser maior que a inicial.", "warning")
+                return redirect(url_for("web.historico"))
+
+            sessao_data = (request.form.get("sessao_data") or sessao_padrao)
+            if not sessao_data:
+                flash("Selecione a sessão que deseja encerrar.", "warning")
+                return redirect(url_for("web.historico"))
+
+            encerradas = db.encerrar_sequencia_senhas(inicio, final, data_iso=sessao_data)
+            if not encerradas:
+                flash(
+                    "Nenhuma senha aguardando foi encontrada nesse intervalo.",
+                    "info",
+                )
+            else:
+                flash(
+                    f"{encerradas} senhas encerradas da faixa {inicio}-{final} do dia {datetime.strptime(sessao_data, '%Y-%m-%d').strftime('%d/%m/%Y')}",
+                    "success",
+                )
+            return redirect(url_for("web.historico", sessao_data=sessao_data))
+
         encerrar_id = (request.form.get("encerrar_id") or "").strip()
         if not encerrar_id.isdigit():
             flash("Informe um ID valido para encerrar.", "warning")
@@ -253,8 +339,17 @@ def historico():
             flash("A senha selecionada ja estava encerrada.", "info")
             return redirect(url_for("web.historico"))
 
-        db.encerrar_senha(encerrar_id)
-        flash("Senha encerrada como nao compareceu.", "success")
+        acao = (acao or "nao_compareceu").strip().lower()
+        if acao != "compareceu":
+            acao = "nao_compareceu"
+        resposta_padrao = "compareceu" if acao == "compareceu" else "nao compareceu"
+        mensagem = (
+            "Senha encerrada como compareceu."
+            if acao == "compareceu"
+            else "Senha encerrada como nao compareceu."
+        )
+        db.encerrar_senha(encerrar_id, resposta_padrao=resposta_padrao)
+        flash(mensagem, "success")
         return redirect(url_for("web.historico"))
 
     status_counts = Counter(
@@ -288,6 +383,7 @@ def historico():
         if (registro.get("status") or "").lower() == "encerrado"
     ][:20]
 
+    sessao_data_label = _formatar_data_local(sessao_data) if sessao_data else ""
     return render_template(
         "historico.html",
         status_labels=list(status_counts.keys()),
@@ -298,6 +394,9 @@ def historico():
         usuario_values=list(usuario_counts.values()),
         abertas=abertas,
         encerradas=encerradas,
+        sessoes=sessoes,
+        sessao_data=sessao_data,
+        sessao_data_label=sessao_data_label,
     )
 
 
@@ -353,6 +452,17 @@ def _converter_para_local(valor_iso: str | None) -> datetime:
         dt = dt.astimezone(db.FUSO_HORARIO)
 
     return dt
+
+
+def _parse_int_from_form(form, campo, default):
+    """Retorna um inteiro simples do formulario com fallback."""
+    raw = (form.get(campo) or str(default)).strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(campo)
 
 
 def _resolver_playlist_id(valor: str | None) -> str:

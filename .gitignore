@@ -15,6 +15,7 @@ ultima_senha.db
 # Segredos
 .env
 .env.*
+!.env.example
 secrets.*
 *.key
 *.pem

@@ -1,4 +1,5 @@
 import sqlite3
+from pathlib import Path
 from flask import current_app as app
 from datetime import datetime, timedelta, time
 import pytz
@@ -20,7 +21,12 @@ COLUNAS = (
 
 def conectar():
     """Abre conexão SQLite"""
-    conn = sqlite3.connect(app.config["DB_PATH"])
+    db_path = Path(app.config["DB_PATH"])
+    db_path_str = str(db_path)
+    if db_path_str and db_path_str != ":memory:":
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -44,12 +50,16 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_senha_status ON senha(status, senha)")
         conn.commit()
 
-def senha_existe(senha_valor: int) -> bool:
-    """Verifica se uma senha já existe"""
+def senha_existe(senha_valor: int, data_iso: str | None = None) -> bool:
+    """Verifica se uma senha j� existe na data selecionada (se fornecida)."""
+    sql = "SELECT 1 FROM senha WHERE senha = ?"
+    params: list = [senha_valor]
+    if data_iso:
+        sql += " AND substr(hora, 1, 10) = ?"
+        params.append(data_iso)
+    sql += " LIMIT 1"
     with conectar() as conn:
-        linha = conn.execute(
-            "SELECT 1 FROM senha WHERE senha = ? LIMIT 1", (senha_valor,)
-        ).fetchone()
+        linha = conn.execute(sql, tuple(params)).fetchone()
     return linha is not None
 
 def inserir_senha(numero: int, unidade: str, usuario: str = "admin", data_execucao=None) -> None:
@@ -180,10 +190,58 @@ def _extrair_data_iso(valor_iso: str | None) -> str | None:
 
     return data_parte
 
+
+def _ids_por_data(data_iso: str, filter_sql: str = "", params: tuple | list = ()) -> list[int]:
+    query = "SELECT id, hora FROM senha"
+    if filter_sql:
+        query += f" WHERE {filter_sql}"
+
+    with conectar() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    return [row["id"] for row in rows if _extrair_data_iso(row["hora"]) == data_iso]
+
+
 def excluir_senhas_por_data(data_iso: str) -> int:
     """Remove todas as senhas associadas à data informada."""
+    ids = _ids_por_data(data_iso)
+    if not ids:
+        return 0
+
+    placeholders = ",".join("?" for _ in ids)
+    sql = f"DELETE FROM senha WHERE id IN ({placeholders})"
     with conectar() as conn:
-        cursor = conn.execute("DELETE FROM senha WHERE DATE(hora) = ?", (data_iso,))
+        cursor = conn.execute(sql, tuple(ids))
+        conn.commit()
+    return cursor.rowcount
+
+
+def encerrar_sequencia_senhas(inicio: int, final: int, data_iso: str | None = None, resposta: str = "nao compareceu") -> int:
+    """Encerra um intervalo de senhas que ainda estao aguardando."""
+    if not data_iso:
+        return 0
+    ids = _ids_por_data(
+        data_iso,
+        filter_sql="status = 'aguardando' AND senha BETWEEN ? AND ?",
+        params=(inicio, final),
+    )
+    if not ids:
+        return 0
+
+    horario = datetime.now(FUSO_HORARIO).isoformat()
+    placeholders = ",".join("?" for _ in ids)
+    sql = f"""
+        UPDATE senha
+        SET status = 'encerrado',
+            resposta = ?,
+            hora = ?,
+            atualizado_em = CURRENT_TIMESTAMP
+        WHERE id IN ({placeholders})
+    """
+    params = [resposta, horario] + ids
+
+    with conectar() as conn:
+        cursor = conn.execute(sql, tuple(params))
         conn.commit()
     return cursor.rowcount
 

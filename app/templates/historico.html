@@ -86,10 +86,18 @@
                 <td>{{ item.terminal or "-" }}</td>
                 <td>{{ item.hora_legivel }}</td>
                 <td>
-                  <form method="post" class="d-inline">
-                    <input type="hidden" name="encerrar_id" value="{{ item.id }}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Encerrar como não compareceu</button>
-                  </form>
+                  <div class="d-flex flex-wrap gap-2">
+                    <form method="post" class="d-inline">
+                      <input type="hidden" name="encerrar_id" value="{{ item.id }}">
+                      <input type="hidden" name="acao" value="compareceu">
+                      <button type="submit" class="btn btn-sm btn-outline-success">Encerrar como compareceu</button>
+                    </form>
+                    <form method="post" class="d-inline">
+                      <input type="hidden" name="encerrar_id" value="{{ item.id }}">
+                      <input type="hidden" name="acao" value="nao_compareceu">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Encerrar como não compareceu</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             {% endfor %}
@@ -98,6 +106,44 @@
       </div>
     {% else %}
       <p class="m-3 text-muted">Nenhuma chamada aberta no momento.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Encerrar sequência — sessão do dia {{ sessao_data_label or "N/D" }}</h5>
+    <small class="text-muted">Informe um intervalo ainda aguardando para encerrar todas as senhas desta sessão.</small>
+  </div>
+  <div class="card-body">
+    {% if sessoes %}
+      <p class="text-muted mb-3">Use este recurso quando várias senhas consecutivas (do dia {{ sessao_data_label }}) não compareceram e você não quer chamar uma a uma.</p>
+      <form method="post" class="row g-3 align-items-end">
+        <input type="hidden" name="acao" value="encerrar_sequencia">
+        <div class="col-md-4">
+          <label class="form-label">Sessão</label>
+          <select class="form-select" name="sessao_data" required>
+            {% for sessao in sessoes %}
+              <option value="{{ sessao.data }}" {% if sessao.data == sessao_data %}selected{% endif %}>
+                {{ sessao.data_legivel or sessao.data }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Senha inicial</label>
+          <input type="number" min="1" name="senha_inicio" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Senha final</label>
+          <input type="number" min="1" name="senha_final" class="form-control" required>
+        </div>
+        <div class="col-md-2 d-flex justify-content-end">
+          <button type="submit" class="btn btn-sm btn-outline-danger w-100">Encerrar sequência</button>
+        </div>
+      </form>
+    {% else %}
+      <p class="text-muted mb-0">Nenhuma sessão disponível para encerrar.</p>
     {% endif %}
   </div>
 </div>

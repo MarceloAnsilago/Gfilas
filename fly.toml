@@ -1,5 +1,4 @@
-app = "senhasflask"
-
+app = "white-glade-1234"          # precisa ser ÚNICO no Fly. Se já existir, mude o nome.
 primary_region = "gru"
 
 [build]
@@ -17,9 +16,9 @@ primary_region = "gru"
   min_machines_running = 1
 
 [[mounts]]
-  source = "app_data"
+  source = "app_data"            # <-- este é o NOME do volume
   destination = "/data"
-  
+
 [vm]
   cpu_kind = "shared"
   cpus = 1
