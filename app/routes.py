@@ -115,8 +115,9 @@ def chamar():
         return redirect(url_for("web.chamar"))
 
     chamada_aberta = db.obter_chamada_aberta()
+    data_producao = db.obter_data_producao_ativa()
     proxima_senha = db.proxima_senha_aguardando()
-    aguardando = db.listar_senhas(status="aguardando")
+    aguardando = db.listar_senhas(status="aguardando", data_iso=data_producao)
 
     return render_template(
         "chamar.html",
@@ -125,6 +126,7 @@ def chamar():
         chamada_aberta=chamada_aberta,
         proxima_senha=proxima_senha,
         total_aguardando=len(aguardando),
+        data_producao=data_producao,
     )
 
 @bp.route("/gerar", methods=["GET", "POST"])
@@ -167,6 +169,8 @@ def gerar_senhas():
             inseridas += 1
 
         formatted_date = data_escolhida.strftime("%d/%m/%Y")
+        if inseridas and not db.obter_data_producao():
+            db.definir_data_producao(iso_data)
         if inseridas:
             flash(
                 f"Sucesso: {inseridas} senhas geradas com sucesso para {formatted_date}.",
@@ -182,6 +186,7 @@ def gerar_senhas():
 
     total_senhas = db.contar_senhas()
     data_padrao = date.today().isoformat()
+    data_producao = db.obter_data_producao_ativa()
     sessoes_brutas = db.listar_sessoes_por_data()
     sessoes = []
     for sessao in sessoes_brutas:
@@ -190,6 +195,7 @@ def gerar_senhas():
             {
                 **sessao,
                 "data_legivel": _formatar_data_local(data_iso) if data_iso else "",
+                "em_producao": data_iso == data_producao,
             }
         )
     return render_template(
@@ -197,7 +203,29 @@ def gerar_senhas():
         total_senhas=total_senhas,
         data_padrao=data_padrao,
         sessoes=sessoes,
+        data_producao=data_producao,
     )
+
+
+@bp.route("/gerar/definir-producao", methods=["POST"])
+def definir_sessao_producao():
+    data_str = (request.form.get("data_execucao") or "").strip()
+    if not data_str:
+        flash("Informe a data da sessao que entrara em producao.", "warning")
+        return redirect(url_for("web.gerar_senhas"))
+
+    sessoes = db.listar_sessoes_por_data()
+    datas_validas = {sessao.get("data") for sessao in sessoes}
+    if data_str not in datas_validas:
+        flash("A sessao selecionada nao foi encontrada.", "warning")
+        return redirect(url_for("web.gerar_senhas"))
+
+    db.definir_data_producao(data_str)
+    flash(
+        f"Sessao de {datetime.strptime(data_str, '%Y-%m-%d').strftime('%d/%m/%Y')} marcada como em producao.",
+        "success",
+    )
+    return redirect(url_for("web.gerar_senhas"))
 
 
 @bp.route("/gerar/excluir-sessao", methods=["POST"])
@@ -230,7 +258,11 @@ def imprimir():
     todas_senhas = db.listar_senhas(status="aguardando")
 
     datas_disponiveis = sorted(
-        {_extrair_data_iso(item.get("hora")) for item in todas_senhas if item.get("hora")}
+        {
+            item.get("data_execucao") or _extrair_data_iso(item.get("hora"))
+            for item in todas_senhas
+            if item.get("data_execucao") or item.get("hora")
+        }
     )
     datas_fmt = [
         {"valor": valor, "label": datetime.strptime(valor, "%Y-%m-%d").strftime("%d/%m/%Y")}
@@ -239,11 +271,15 @@ def imprimir():
 
     data_selecionada = request.args.get("data")
     if data_selecionada not in datas_disponiveis:
-        data_selecionada = datas_disponiveis[-1] if datas_disponiveis else None
+        data_selecionada = db.obter_data_producao_ativa()
+        if data_selecionada not in datas_disponiveis:
+            data_selecionada = datas_disponiveis[-1] if datas_disponiveis else None
 
     if data_selecionada:
         senhas_raw = [
-            item for item in todas_senhas if _extrair_data_iso(item.get("hora")) == data_selecionada
+            item
+            for item in todas_senhas
+            if (item.get("data_execucao") or _extrair_data_iso(item.get("hora"))) == data_selecionada
         ]
         titulo = f"Senhas de {datetime.strptime(data_selecionada, '%Y-%m-%d').strftime('%d/%m/%Y')}"
     else:

@@ -38,6 +38,7 @@ def init_db():
                 id INTEGER PRIMARY KEY,
                 senha INTEGER,
                 hora TEXT,
+                data_execucao TEXT,
                 usuario TEXT,
                 resposta TEXT,
                 status TEXT,
@@ -47,6 +48,22 @@ def init_db():
                 atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS configuracao (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            )
+        """)
+        colunas = [row["name"] for row in conn.execute("PRAGMA table_info(senha)").fetchall()]
+        if "data_execucao" not in colunas:
+            conn.execute("ALTER TABLE senha ADD COLUMN data_execucao TEXT")
+            conn.execute(
+                """
+                UPDATE senha
+                SET data_execucao = substr(hora, 1, 10)
+                WHERE data_execucao IS NULL OR data_execucao = ''
+                """
+            )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_senha_status ON senha(status, senha)")
         conn.commit()
 
@@ -55,7 +72,7 @@ def senha_existe(senha_valor: int, data_iso: str | None = None) -> bool:
     sql = "SELECT 1 FROM senha WHERE senha = ?"
     params: list = [senha_valor]
     if data_iso:
-        sql += " AND substr(hora, 1, 10) = ?"
+        sql += " AND COALESCE(data_execucao, substr(hora, 1, 10)) = ?"
         params.append(data_iso)
     sql += " LIMIT 1"
     with conectar() as conn:
@@ -71,6 +88,7 @@ def inserir_senha(numero: int, unidade: str, usuario: str = "admin", data_execuc
     dados = (
         numero,
         hora_local.isoformat(),
+        data_execucao.isoformat(),
         usuario,
         "",
         "aguardando",
@@ -80,8 +98,8 @@ def inserir_senha(numero: int, unidade: str, usuario: str = "admin", data_execuc
     )
     with conectar() as conn:
         conn.execute("""
-            INSERT INTO senha (senha, hora, usuario, resposta, status, terminal, unidade, prioridade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO senha (senha, hora, data_execucao, usuario, resposta, status, terminal, unidade, prioridade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, dados)
         conn.commit()
 
@@ -90,17 +108,23 @@ def contar_senhas():
         total = conn.execute("SELECT COUNT(*) as c FROM senha").fetchone()
         return total["c"] if total else 0
 
-def listar_senhas(status: str | None = None):
+def listar_senhas(status: str | None = None, data_iso: str | None = None):
     """Retorna senhas (opcionalmente filtradas por status) ordenadas pelo numero."""
-    sql = "SELECT senha, unidade, hora, status FROM senha"
-    params: tuple = ()
+    sql = "SELECT senha, unidade, hora, status, data_execucao FROM senha"
+    filtros = []
+    params: list = []
     if status:
-        sql += " WHERE status = ?"
-        params = (status,)
+        filtros.append("status = ?")
+        params.append(status)
+    if data_iso:
+        filtros.append("COALESCE(data_execucao, substr(hora, 1, 10)) = ?")
+        params.append(data_iso)
+    if filtros:
+        sql += " WHERE " + " AND ".join(filtros)
     sql += " ORDER BY senha ASC"
 
     with conectar() as conn:
-        rows = conn.execute(sql, params).fetchall()
+        rows = conn.execute(sql, tuple(params)).fetchall()
 
     return [
         {
@@ -108,6 +132,7 @@ def listar_senhas(status: str | None = None):
             "unidade": row["unidade"] or "UNIDADE",
             "hora": row["hora"],
             "status": row["status"],
+            "data_execucao": row["data_execucao"],
         }
         for row in rows
     ]
@@ -130,11 +155,11 @@ def listar_ultimas_encerradas(limite: int = 8):
 def listar_sessoes_por_data():
     """Agrupa as senhas existentes por data."""
     with conectar() as conn:
-        rows = conn.execute("SELECT senha, hora, status FROM senha").fetchall()
+        rows = conn.execute("SELECT senha, hora, status, data_execucao FROM senha").fetchall()
 
     sessoes: dict[str, dict] = {}
     for row in rows:
-        data_iso = _extrair_data_iso(row["hora"])
+        data_iso = row["data_execucao"] or _extrair_data_iso(row["hora"])
         if not data_iso:
             continue
         sessao = sessoes.setdefault(
@@ -167,6 +192,47 @@ def listar_sessoes_por_data():
     return sorted(sessoes.values(), key=lambda data_item: data_item["data"], reverse=True)
 
 
+def obter_data_producao() -> str | None:
+    """Retorna a data marcada como sessao em producao."""
+    with conectar() as conn:
+        row = conn.execute(
+            "SELECT valor FROM configuracao WHERE chave = 'data_producao'"
+        ).fetchone()
+    return row["valor"] if row and row["valor"] else None
+
+
+def definir_data_producao(data_iso: str | None) -> None:
+    """Atualiza a data em producao; aceita None para limpar."""
+    with conectar() as conn:
+        if data_iso:
+            conn.execute(
+                """
+                INSERT INTO configuracao (chave, valor)
+                VALUES ('data_producao', ?)
+                ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor
+                """,
+                (data_iso,),
+            )
+        else:
+            conn.execute("DELETE FROM configuracao WHERE chave = 'data_producao'")
+        conn.commit()
+
+
+def obter_data_producao_ativa() -> str | None:
+    """Retorna a data em producao, usando a sessao mais recente como fallback."""
+    data_producao = obter_data_producao()
+    sessoes = listar_sessoes_por_data()
+    datas_validas = {sessao["data"] for sessao in sessoes if sessao.get("data")}
+
+    if data_producao in datas_validas:
+        return data_producao
+
+    fallback = sessoes[0]["data"] if sessoes else None
+    if fallback != data_producao:
+        definir_data_producao(fallback)
+    return fallback
+
+
 def _extrair_data_iso(valor_iso: str | None) -> str | None:
     """Extrai YYYY-MM-DD sem alterar o dia original do timestamp."""
     if not valor_iso:
@@ -192,14 +258,18 @@ def _extrair_data_iso(valor_iso: str | None) -> str | None:
 
 
 def _ids_por_data(data_iso: str, filter_sql: str = "", params: tuple | list = ()) -> list[int]:
-    query = "SELECT id, hora FROM senha"
+    query = "SELECT id, hora, data_execucao FROM senha"
     if filter_sql:
         query += f" WHERE {filter_sql}"
 
     with conectar() as conn:
         rows = conn.execute(query, params).fetchall()
 
-    return [row["id"] for row in rows if _extrair_data_iso(row["hora"]) == data_iso]
+    return [
+        row["id"]
+        for row in rows
+        if (row["data_execucao"] or _extrair_data_iso(row["hora"])) == data_iso
+    ]
 
 
 def excluir_senhas_por_data(data_iso: str) -> int:
@@ -213,6 +283,8 @@ def excluir_senhas_por_data(data_iso: str) -> int:
     with conectar() as conn:
         cursor = conn.execute(sql, tuple(ids))
         conn.commit()
+    if obter_data_producao() == data_iso:
+        definir_data_producao(None)
     return cursor.rowcount
 
 
@@ -273,9 +345,21 @@ def obter_chamada_aberta():
 
 def proxima_senha_aguardando():
     """Retorna a proxima senha aguardando."""
+    data_producao = obter_data_producao_ativa()
+    if not data_producao:
+        return None
+
     with conectar() as conn:
         linha = conn.execute(
-            "SELECT * FROM senha WHERE status = 'aguardando' ORDER BY senha ASC LIMIT 1"
+            """
+            SELECT *
+            FROM senha
+            WHERE status = 'aguardando'
+              AND COALESCE(data_execucao, substr(hora, 1, 10)) = ?
+            ORDER BY senha ASC
+            LIMIT 1
+            """,
+            (data_producao,),
         ).fetchone()
     return dict(linha) if linha else None
 

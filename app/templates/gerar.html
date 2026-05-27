@@ -48,18 +48,35 @@
   <div class="card-header">Sessões geradas por data</div>
   <div class="card-body">
     {% if sessoes %}
+      <p class="text-muted small mb-3">Quando houver mais de um dia, marque qual sessão está em produção. As próximas chamadas saem apenas da sessão selecionada.</p>
       <div class="row">
         {% for sessao in sessoes %}
           {% set titulo_sessao = (sessao.data_legivel or sessao.data) | default("esta sessão") %}
           <div class="col-md-6 mb-3">
-            <div class="card h-100 border-secondary">
+            <div class="card h-100 {% if sessao.em_producao %}border-primary{% else %}border-secondary{% endif %}">
               <div class="card-body">
-                <h5 class="card-title mb-2">{{ titulo_sessao }}</h5>
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                  <h5 class="card-title mb-0">{{ titulo_sessao }}</h5>
+                  <form method="POST" action="{{ url_for('web.definir_sessao_producao') }}" class="m-0">
+                    <input type="hidden" name="data_execucao" value="{{ sessao.data or '' }}">
+                    <label class="form-check form-switch border rounded px-3 py-2 mb-0 {% if sessao.em_producao %}border-primary bg-light{% endif %}" style="cursor:pointer;">
+                      <input
+                        type="checkbox"
+                        class="form-check-input"
+                        {% if sessao.em_producao %}checked{% endif %}
+                        onchange="this.form.submit()"
+                      >
+                      <span class="form-check-label ms-2">
+                        {% if sessao.em_producao %}Em produção{% else %}Colocar em produção{% endif %}
+                      </span>
+                    </label>
+                  </form>
+                </div>
                 <p class="card-text mb-1">
                   <strong>{{ sessao.total }}</strong> senhas geradas
                 </p>
                 <p class="card-text text-muted small mb-0">
-                  Faixa {{ sessao.menor or 0 }} – {{ sessao.maior or 0 }}
+                  Faixa {{ sessao.menor or 0 }} - {{ sessao.maior or 0 }}
                   {% if sessao.aguardando %} · {{ sessao.aguardando }} aguardando{% endif %}
                   {% if sessao.aberto %} · {{ sessao.aberto }} em atendimento{% endif %}
                   {% if sessao.encerradas %} · {{ sessao.encerradas }} encerradas{% endif %}
@@ -84,7 +101,7 @@
                     Ir para impressão
                   </a>
                 </div>
-                <small class="text-muted">faixa {{ sessao.menor or 0 }} – {{ sessao.maior or 0 }}</small>
+                <small class="text-muted">faixa {{ sessao.menor or 0 }} - {{ sessao.maior or 0 }}</small>
               </div>
             </div>
           </div>
