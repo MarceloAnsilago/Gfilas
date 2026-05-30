@@ -441,6 +441,11 @@ def painel():
     return render_template("painel.html", video_embed=_montar_video_embed())
 
 
+@bp.route("/senhas")
+def senhas():
+    return render_template("senhas.html")
+
+
 @bp.route("/painel/status")
 def painel_status():
     atual = db.obter_chamada_aberta()
