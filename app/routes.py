@@ -201,6 +201,8 @@ def gerar_senhas():
     data_padrao = date.today().isoformat()
     data_producao = db.obter_data_producao_ativa()
     origem_padrao = db.obter_origem_padrao()
+    ultimo_normal = db.obter_ultimo_numero_totem("normal")
+    ultimo_preferencial = db.obter_ultimo_numero_totem("preferencial")
     sessoes_brutas = db.listar_sessoes_por_data(origem="lote")
     sessoes = []
     for sessao in sessoes_brutas:
@@ -218,6 +220,8 @@ def gerar_senhas():
         data_padrao=data_padrao,
         sessoes=sessoes,
         data_producao=data_producao,
+        ultimo_normal=ultimo_normal,
+        ultimo_preferencial=ultimo_preferencial,
     )
 
 
@@ -265,6 +269,18 @@ def excluir_sessao_senhas():
     else:
         flash("Nenhuma senha encontrada para essa data.", "info")
 
+    return redirect(url_for("web.gerar_senhas"))
+
+
+@bp.route("/gerar/reiniciar-totem", methods=["POST"])
+def reiniciar_totem():
+    prioridade = (request.form.get("prioridade") or "").strip().lower()
+    if prioridade not in PRIORIDADE_LABELS:
+        flash("Prioridade invalida para reinicio.", "warning")
+        return redirect(url_for("web.gerar_senhas"))
+
+    db.reiniciar_numero_totem(prioridade)
+    flash(f"Contador de {PRIORIDADE_LABELS[prioridade].lower()} reiniciado.", "success")
     return redirect(url_for("web.gerar_senhas"))
 
 
@@ -543,7 +559,15 @@ def _emitir_e_imprimir_senha(prioridade: str):
 
     unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
     data_execucao = date.today().isoformat()
-    numero_int = db.proximo_numero_senha(data_execucao)
+    try:
+        numero_int = db.proximo_numero_totem(prioridade)
+    except ValueError:
+        return jsonify(
+            {
+                "ok": False,
+                "message": "A fila preferencial atingiu o limite 100. Reinicie o contador para voltar ao 001.",
+            }
+        ), 409
     numero = f"{numero_int:03}"
     horario_local = datetime.now(db.FUSO_HORARIO)
     try:
@@ -562,6 +586,7 @@ def _emitir_e_imprimir_senha(prioridade: str):
             prioridade=prioridade,
             origem="totem",
         )
+        db.registrar_numero_totem(prioridade, numero_int)
         db.definir_data_producao(None)
         db.definir_origem_padrao("totem")
     except printer.PrinterError as exc:

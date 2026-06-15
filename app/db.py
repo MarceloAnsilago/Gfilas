@@ -293,6 +293,57 @@ def obter_origem_padrao() -> str:
     return valor if valor in {"lote", "totem"} else "lote"
 
 
+def obter_ultimo_numero_totem(prioridade: str) -> int:
+    """Retorna o ultimo numero emitido pelo totem para a prioridade."""
+    chave = _chave_contador_totem(prioridade)
+    with conectar() as conn:
+        row = conn.execute(
+            "SELECT valor FROM configuracao WHERE chave = ?",
+            (chave,),
+        ).fetchone()
+    if not row or not row["valor"]:
+        return 0 if prioridade == "preferencial" else 100
+    try:
+        return int(str(row["valor"]).strip())
+    except ValueError:
+        return 0 if prioridade == "preferencial" else 100
+
+
+def proximo_numero_totem(prioridade: str) -> int:
+    """Calcula o proximo numero do totem conforme a faixa da prioridade."""
+    prioridade = _normalizar_prioridade(prioridade)
+    ultimo = obter_ultimo_numero_totem(prioridade)
+    proximo = ultimo + 1
+    if prioridade == "preferencial" and proximo > 100:
+        raise ValueError("limite_preferencial")
+    if prioridade == "normal" and proximo < 101:
+        proximo = 101
+    return proximo
+
+
+def registrar_numero_totem(prioridade: str, numero: int) -> None:
+    """Persiste o ultimo numero emitido pelo totem."""
+    prioridade = _normalizar_prioridade(prioridade)
+    chave = _chave_contador_totem(prioridade)
+    with conectar() as conn:
+        conn.execute(
+            """
+            INSERT INTO configuracao (chave, valor)
+            VALUES (?, ?)
+            ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor
+            """,
+            (chave, str(int(numero))),
+        )
+        conn.commit()
+
+
+def reiniciar_numero_totem(prioridade: str) -> None:
+    """Reinicia o contador do totem para a prioridade."""
+    prioridade = _normalizar_prioridade(prioridade)
+    valor_base = 0 if prioridade == "preferencial" else 100
+    registrar_numero_totem(prioridade, valor_base)
+
+
 def definir_origem_padrao(origem: str) -> None:
     """Atualiza a origem padrao da fila ativa."""
     origem = (origem or "lote").strip().lower()
@@ -511,6 +562,15 @@ def _obter_data_ativa_por_origem(origem: str) -> str | None:
             (origem,),
         ).fetchone()
     return row["data_ref"] if row and row["data_ref"] else None
+
+
+def _normalizar_prioridade(prioridade: str) -> str:
+    return "preferencial" if (prioridade or "").strip().lower() == "preferencial" else "normal"
+
+
+def _chave_contador_totem(prioridade: str) -> str:
+    prioridade = _normalizar_prioridade(prioridade)
+    return f"contador_totem_{prioridade}"
 
 def obter_senha_por_id(identificador: int):
     """Busca uma senha especifica por ID."""
