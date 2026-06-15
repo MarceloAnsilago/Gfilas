@@ -3,6 +3,7 @@ from collections import Counter
 import logging
 import os
 import time
+import json
 from urllib.parse import parse_qs, urlparse
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify
@@ -515,6 +516,46 @@ def painel_status():
     return jsonify(payload)
 
 
+@bp.route("/print-agent/jobs/claim", methods=["POST"])
+def print_agent_claim():
+    erro = _validar_print_agent()
+    if erro:
+        return erro
+
+    job = db.claim_next_print_job()
+    if not job:
+        return ("", 204)
+    return jsonify({"ok": True, "job": job})
+
+
+@bp.route("/print-agent/jobs/<int:job_id>/complete", methods=["POST"])
+def print_agent_complete(job_id: int):
+    erro = _validar_print_agent()
+    if erro:
+        return erro
+
+    payload = request.get_json(silent=True) or {}
+    printer_info = payload.get("printer_info")
+    if isinstance(printer_info, (dict, list)):
+        printer_info = json.dumps(printer_info, ensure_ascii=True)
+    elif printer_info is not None:
+        printer_info = str(printer_info)
+    db.concluir_print_job(job_id, printer_info=printer_info)
+    return jsonify({"ok": True})
+
+
+@bp.route("/print-agent/jobs/<int:job_id>/error", methods=["POST"])
+def print_agent_error(job_id: int):
+    erro = _validar_print_agent()
+    if erro:
+        return erro
+
+    payload = request.get_json(silent=True) or {}
+    message = str(payload.get("message") or "Erro de impressao nao informado.")
+    db.falhar_print_job(job_id, message)
+    return jsonify({"ok": True})
+
+
 def _formatar_data_local(valor_iso: str | None) -> str:
     """Formata data ISO armazenada no banco para exibicao local."""
     dt = _converter_para_local(valor_iso)
@@ -565,6 +606,24 @@ def _invalidate_painel_status_cache():
     _PAINEL_STATUS_CACHE["expires_at"] = 0.0
 
 
+def _validar_print_agent():
+    token_cfg = (os.getenv("PRINT_AGENT_TOKEN") or "").strip()
+    if not token_cfg:
+        return jsonify({"ok": False, "message": "PRINT_AGENT_TOKEN nao configurado."}), 503
+
+    token_req = (request.headers.get("X-Print-Agent-Token") or "").strip()
+    if not token_req and request.authorization:
+        token_req = (request.authorization.password or request.authorization.username or "").strip()
+    if not token_req:
+        auth_header = request.headers.get("Authorization") or ""
+        if auth_header.lower().startswith("bearer "):
+            token_req = auth_header[7:].strip()
+
+    if token_req != token_cfg:
+        return jsonify({"ok": False, "message": "Nao autorizado."}), 401
+    return None
+
+
 def _emitir_e_imprimir_senha(prioridade: str):
     prioridade = (prioridade or "").strip().lower()
     if prioridade not in PRIORIDADE_LABELS:
@@ -583,14 +642,26 @@ def _emitir_e_imprimir_senha(prioridade: str):
         ), 409
     numero = f"{numero_int:03}"
     horario_local = datetime.now(db.FUSO_HORARIO)
+    modo_impressao = printer.printer_mode()
     try:
-        metadata = printer.imprimir_senha(
-            numero=numero,
-            tipo=PRIORIDADE_LABELS[prioridade],
-            unidade=unidade,
-            data_hora=horario_local,
-            teste=False,
-        )
+        if modo_impressao == "queue":
+            job_id = db.criar_print_job(
+                numero=numero,
+                tipo=PRIORIDADE_LABELS[prioridade],
+                unidade=unidade,
+                prioridade=prioridade,
+                data_hora=horario_local.isoformat(),
+                teste=False,
+            )
+            metadata = {"mode": "queue", "job_id": job_id}
+        else:
+            metadata = printer.imprimir_senha(
+                numero=numero,
+                tipo=PRIORIDADE_LABELS[prioridade],
+                unidade=unidade,
+                data_hora=horario_local,
+                teste=False,
+            )
         identificador = db.inserir_senha(
             numero_int,
             unidade,
@@ -613,7 +684,11 @@ def _emitir_e_imprimir_senha(prioridade: str):
     return jsonify(
         {
             "ok": True,
-            "message": f"{PRIORIDADE_LABELS[prioridade]} {numero} enviada para impressora.",
+            "message": (
+                f"{PRIORIDADE_LABELS[prioridade]} {numero} enviada para fila de impressao."
+                if modo_impressao == "queue"
+                else f"{PRIORIDADE_LABELS[prioridade]} {numero} enviada para impressora."
+            ),
             "senha": numero,
             "prioridade": prioridade,
             "id": identificador,
@@ -625,14 +700,26 @@ def _emitir_e_imprimir_senha(prioridade: str):
 def _imprimir_teste():
     unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
     agora = datetime.now(db.FUSO_HORARIO)
+    modo_impressao = printer.printer_mode()
     try:
-        metadata = printer.imprimir_senha(
-            numero="000",
-            tipo="Senha normal",
-            unidade=unidade,
-            data_hora=agora,
-            teste=True,
-        )
+        if modo_impressao == "queue":
+            job_id = db.criar_print_job(
+                numero="000",
+                tipo="Senha normal",
+                unidade=unidade,
+                prioridade="normal",
+                data_hora=agora.isoformat(),
+                teste=True,
+            )
+            metadata = {"mode": "queue", "job_id": job_id}
+        else:
+            metadata = printer.imprimir_senha(
+                numero="000",
+                tipo="Senha normal",
+                unidade=unidade,
+                data_hora=agora,
+                teste=True,
+            )
     except printer.PrinterError as exc:
         logger.exception("Falha ao imprimir teste da impressora")
         return jsonify({"ok": False, "message": str(exc)}), 503
@@ -643,7 +730,11 @@ def _imprimir_teste():
     return jsonify(
         {
             "ok": True,
-            "message": "Impressao de teste enviada para a impressora.",
+            "message": (
+                "Impressao de teste enviada para a fila."
+                if modo_impressao == "queue"
+                else "Impressao de teste enviada para a impressora."
+            ),
             "printer_job": metadata,
         }
     )

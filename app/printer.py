@@ -17,12 +17,21 @@ class PrinterError(RuntimeError):
     """Erro operacional ao enviar dados para a impressora."""
 
 
+def printer_mode() -> str:
+    """Define o modo de entrega da impressao: local ou queue."""
+    raw = (os.getenv("THERMAL_PRINTER_MODE") or "").strip().lower()
+    if raw in {"queue", "remote", "agent"}:
+        return "queue"
+    return "local"
+
+
 def printer_config():
     """Retorna configuracao efetiva da impressora termica."""
     return {
         "enabled": os.getenv("THERMAL_PRINTER_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"},
         "name": (os.getenv("THERMAL_PRINTER_NAME") or "POS58 DRIVER (TESTADO)").strip(),
         "encoding": (os.getenv("THERMAL_PRINTER_ENCODING") or "cp850").strip(),
+        "mode": printer_mode(),
     }
 
 
@@ -43,6 +52,8 @@ def printer_ready() -> tuple[bool, str | None]:
     cfg = printer_config()
     if not cfg["enabled"]:
         return False, "Impressora termica desativada por configuracao."
+    if cfg["mode"] == "queue":
+        return True, "Impressao remota via fila/agente local."
     if sys.platform != "win32":
         return False, "Impressao termica direta suportada apenas no Windows."
     if win32print is None:

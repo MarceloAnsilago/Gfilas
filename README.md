@@ -11,7 +11,8 @@ Painel de senhas em Flask com painel digital, preparado para rodar localmente e 
 - `PAINEL_FUSO_HORARIO`: fuso usado nos carimbos de data/hora (`America/Sao_Paulo`, `Etc/GMT+3`, etc.).
 - `PAINEL_MAX_ULTIMAS`: quantas senhas encerradas aparecem no painel digital.
 - `PAINEL_VIDEO_URL`, `PAINEL_VIDEO_MUTED`, `PAINEL_YT_PLAYLIST_URL`, `PAINEL_YT_PLAYLIST_ID`, `PAINEL_YT_MUTED`: parametros opcionais para o conteudo em tela cheia do painel.
-- `THERMAL_PRINTER_ENABLED`, `THERMAL_PRINTER_NAME`, `THERMAL_PRINTER_ENCODING`: configuracoes da impressora termica ESC/POS no Windows via `win32print`.
+- `THERMAL_PRINTER_MODE`, `THERMAL_PRINTER_ENABLED`, `THERMAL_PRINTER_NAME`, `THERMAL_PRINTER_ENCODING`: configuracoes da impressora termica ESC/POS no Windows via `win32print`.
+- `PRINT_AGENT_BASE_URL`, `PRINT_AGENT_TOKEN`, `PRINT_AGENT_POLL_INTERVAL`: configuracoes do agente local de impressao usado quando o servidor principal roda no Fly.io.
 
 Um exemplo de todas as variaveis acima esta em `.env.example`.
 
@@ -33,9 +34,26 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 3. O `fly.toml` ja configura o volume `/data` (montado como `app_data`) e define `PAINEL_DB_PATH=/data/ultima_senha.db` para manter o SQLite persistente.
 4. Para ver logs ou diagnosticar problemas, use `flyctl logs -a senhasflask` e ajuste variaveis via `flyctl secrets` ou pelo painel da Fly.
 
+## Impressao remota via agente
+
+Quando o sistema principal roda no Fly.io, a impressora USB do Windows nao fica visivel ao servidor. Para esse caso:
+
+1. No Fly.io, configure:
+   `THERMAL_PRINTER_MODE=queue`
+   `PRINT_AGENT_TOKEN=<token-longo>`
+2. No PC Windows da impressora, use um `.env` local com:
+   `THERMAL_PRINTER_MODE=local`
+   `THERMAL_PRINTER_NAME=POS58 DRIVER (TESTADO)` (ou o nome real no Windows)
+   `PRINT_AGENT_BASE_URL=https://SEU-APP.fly.dev`
+   `PRINT_AGENT_TOKEN=<mesmo-token-do-fly>`
+3. Inicie o agente no PC da impressora:
+   `python print_agent.py`
+
+O servidor web passa a enfileirar as impressoes e o agente busca cada job pendente para imprimir localmente com `win32print`.
+
 ## Observacoes
 
 - O repositorio tambem inclui scripts Windows (`bootstrap_venv.bat`, `start_server.bat`) para facilitar o bootstrap em estacoes Windows.
 - Use `requirements.prod.txt` no ambiente local e mantenha `requirements.deploy.txt` alinhado ao que sera instalado dentro do container.
-- A tela `/senhas` agora envia a impressao direto pelo backend Flask para a impressora termica configurada, sem usar `window.print()`.
+- A tela `/senhas` pode imprimir direto no Windows (`THERMAL_PRINTER_MODE=local`) ou enfileirar para um agente local (`THERMAL_PRINTER_MODE=queue`).
 - Rotas de impressao: `POST /senhas/imprimir/normal`, `POST /senhas/imprimir/preferencial` e `POST /senhas/imprimir/teste`.
