@@ -195,7 +195,11 @@
       }catch(e){ console.error(e); }
     }
 
-    function showModal(senha, unidade, terminal, atendente){
+    function prioridadeFalado(prioridade){
+      return (prioridade || '').toLowerCase() === 'preferencial' ? 'preferencial' : 'normal';
+    }
+
+    function showModal(senha, unidade, terminal, atendente, prioridade){
       const senhaFormatada = z3(senha);
       const destinoTerminal = terminal ? `terminal ${terminal}` : 'terminal de atendimento';
       const nomeAtendente = (atendente ?? '').trim();
@@ -211,7 +215,8 @@
       backdrop.style.display = 'flex';
       beep();
       const numeroFalado = parseInt(senha, 10) || 0;
-      setTimeout(()=>falar(`Senha ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
+      const tipoFalado = prioridadeFalado(prioridade);
+      setTimeout(()=>falar(`Senha ${tipoFalado} ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
       setTimeout(()=>backdrop.style.display='none', 4500);
     }
 
@@ -228,11 +233,12 @@
             atual.id ?? `${atual.status}-${atual.senha}`,
             (atual.status || '').toLowerCase(),
             (atual.resposta || '').toLowerCase(),
+            (atual.prioridade || '').toLowerCase(),
             atual.atualizado_em || ''
           ].join('|')
         : null;
       if(atual && deveAnunciar && chave !== lastKey){
-        showModal(atual.senha, atual.unidade, atual.terminal, atual.usuario);
+        showModal(atual.senha, atual.unidade, atual.terminal, atual.usuario, atual.prioridade);
       }
       if(chave !== lastKey){ lastKey = chave; }
     }
