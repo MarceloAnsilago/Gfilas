@@ -121,6 +121,17 @@
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
     }
 
+    .mark.fullscreen-trigger {
+      appearance: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+    }
+
     .mark svg {
       width: 26px;
       height: 26px;
@@ -458,6 +469,10 @@
         align-items: center;
       }
 
+      .topbar-left {
+        gap: 0;
+      }
+
       .mark {
         width: 42px;
         height: 42px;
@@ -675,11 +690,19 @@
   <main class="screen">
     <section class="content">
       <header class="topbar">
-        <div class="mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 3 6.5 5v5.2c0 4.1 2.5 7.8 5.5 9.8 3-2 5.5-5.7 5.5-9.8V5L12 3Z"></path>
-            <path d="m9.6 11.8 1.8 1.8 3.5-4"></path>
-          </svg>
+        <div class="topbar-left">
+          <button
+            type="button"
+            id="btn-fullscreen"
+            class="mark fullscreen-trigger"
+            aria-label="Abrir em tela cheia"
+            title="Tela cheia"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 6.5 5v5.2c0 4.1 2.5 7.8 5.5 9.8 3-2 5.5-5.7 5.5-9.8V5L12 3Z"></path>
+              <path d="m9.6 11.8 1.8 1.8 3.5-4"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="hero">
@@ -815,6 +838,7 @@
       const root = document.documentElement;
       const statusEl = document.getElementById("print-status");
       const printTargets = document.querySelectorAll("[data-print-url]");
+      const fullscreenButton = document.getElementById("btn-fullscreen");
       let isPrinting = false;
       const setStatus = (message, tone) => {
         if (!statusEl) {
@@ -863,15 +887,42 @@
         }
       };
 
-      const tryFullscreen = () => {
-        if (!document.fullscreenEnabled || document.fullscreenElement) {
-          return;
+      const tryFullscreen = async (silent) => {
+        if (document.fullscreenElement) {
+          return true;
         }
 
-        root.requestFullscreen().catch(() => {});
+        if (!document.fullscreenEnabled || !root.requestFullscreen) {
+          if (!silent) {
+            setStatus("Tela cheia nao disponivel neste navegador.", "error");
+          }
+          return false;
+        }
+
+        try {
+          await root.requestFullscreen();
+          if (!silent) {
+            setStatus("Tela cheia ativada.", "success");
+          }
+          return true;
+        } catch (error) {
+          if (!silent) {
+            setStatus("O navegador bloqueou a tela cheia.", "error");
+          }
+          return false;
+        }
       };
 
-      window.addEventListener("pointerdown", tryFullscreen, { once: true });
+      window.addEventListener("pointerdown", () => {
+        tryFullscreen(true);
+      }, { once: true });
+
+      if (fullscreenButton) {
+        fullscreenButton.addEventListener("click", () => {
+          tryFullscreen(false);
+        });
+      }
+
       printTargets.forEach((element) => {
         element.addEventListener("click", (event) => {
           event.preventDefault();
