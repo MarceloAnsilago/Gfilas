@@ -76,6 +76,7 @@ def init_db():
                 """
             )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_senha_status ON senha(status, senha)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_senha_status_updated ON senha(status, atualizado_em DESC, id DESC)")
         conn.commit()
 
 def senha_existe(senha_valor: int, data_iso: str | None = None) -> bool:
@@ -227,6 +228,36 @@ def listar_ultimas_encerradas(limite: int = 8):
             (limite,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def obter_painel_status_snapshot(limite: int = 8):
+    """Retorna senha atual e últimas encerradas usando uma única conexão."""
+    with conectar() as conn:
+        atual = conn.execute(
+            """
+            SELECT *
+            FROM senha
+            WHERE status = 'aberto'
+            ORDER BY atualizado_em DESC, id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        ultimas = conn.execute(
+            """
+            SELECT *
+            FROM senha
+            WHERE status = 'encerrado'
+            ORDER BY atualizado_em DESC, id DESC
+            LIMIT ?
+            """,
+            (limite,),
+        ).fetchall()
+
+    atual_dict = dict(atual) if atual else None
+    ultimas_dict = [dict(row) for row in ultimas]
+    if not atual_dict and ultimas_dict:
+        atual_dict = ultimas_dict[0]
+    return {"senha_atual": atual_dict, "ultimas_senhas": ultimas_dict}
 
 def listar_sessoes_por_data(origem: str | None = None):
     """Agrupa as senhas existentes por data."""
