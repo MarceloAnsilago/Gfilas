@@ -382,6 +382,56 @@
       font-size: 1rem;
     }
 
+    .print-status {
+      min-height: 52px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      text-align: center;
+      color: #f6fff9;
+      font-size: 0.92rem;
+    }
+
+    .print-status.error {
+      border-color: rgba(255, 128, 128, 0.25);
+      background: rgba(122, 18, 18, 0.4);
+      color: #ffd7d7;
+    }
+
+    .print-status.success {
+      border-color: rgba(111, 255, 150, 0.22);
+      background: rgba(20, 91, 43, 0.55);
+      color: #dfffe6;
+    }
+
+    .quick-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .quick-actions button {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+
+    .quick-actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     @media (orientation: landscape) and (max-width: 950px) {
       body {
         padding: 8px;
@@ -594,7 +644,7 @@
       </header>
 
       <section class="cards" aria-label="Tipos de atendimento">
-        <a class="card normal" href="#" aria-label="Senha normal">
+        <a class="card normal" href="{{ url_for('web.imprimir_senha', prioridade='normal') }}" data-print-url="{{ url_for('web.imprimir_senha', prioridade='normal') }}" aria-label="Senha normal">
           <div class="card-body">
             <div class="icon-shell" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -615,7 +665,7 @@
           </div>
         </a>
 
-        <a class="card preferencial" href="#" aria-label="Senha preferencial">
+        <a class="card preferencial" href="{{ url_for('web.imprimir_senha', prioridade='preferencial') }}" data-print-url="{{ url_for('web.imprimir_senha', prioridade='preferencial') }}" aria-label="Senha preferencial">
           <div class="card-body">
             <div class="icon-shell" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -662,12 +712,76 @@
         </div>
       </section>
 
+      <div class="print-status{% if not printer_ok %} error{% endif %}" id="print-status">
+        {% if printer_ok %}
+          Toque em uma opcao para emitir e imprimir a senha na termica.
+        {% else %}
+          {{ printer_message }}
+        {% endif %}
+      </div>
+
+      <div class="quick-actions">
+        <button type="button" id="btn-print-test" data-print-url="{{ url_for('web.imprimir_teste') }}">
+          Imprimir teste
+        </button>
+      </div>
+
       <div class="thanks">Obrigado pela sua presença!</div>
     </section>
   </main>
   <script>
     (function () {
       const root = document.documentElement;
+      const statusEl = document.getElementById("print-status");
+      const printTargets = document.querySelectorAll("[data-print-url]");
+      let isPrinting = false;
+      const setStatus = (message, tone) => {
+        if (!statusEl) {
+          return;
+        }
+
+        statusEl.textContent = message;
+        statusEl.classList.remove("error", "success");
+        if (tone) {
+          statusEl.classList.add(tone);
+        }
+      };
+
+      const sendPrint = async (url) => {
+        if (isPrinting) {
+          return;
+        }
+        isPrinting = true;
+        printTargets.forEach((element) => {
+          element.style.pointerEvents = "none";
+          if (element.tagName === "BUTTON") {
+            element.disabled = true;
+          }
+        });
+        setStatus("Enviando para a impressora...", null);
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "X-Requested-With": "fetch" }
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.message || "Falha ao imprimir.");
+          }
+          setStatus(payload.message || "Senha enviada para impressora.", "success");
+        } catch (error) {
+          setStatus(error.message || "Falha ao enviar a impressao.", "error");
+        } finally {
+          isPrinting = false;
+          printTargets.forEach((element) => {
+            element.style.pointerEvents = "";
+            if (element.tagName === "BUTTON") {
+              element.disabled = false;
+            }
+          });
+        }
+      };
+
       const tryFullscreen = () => {
         if (!document.fullscreenEnabled || document.fullscreenElement) {
           return;
@@ -677,6 +791,15 @@
       };
 
       window.addEventListener("pointerdown", tryFullscreen, { once: true });
+      printTargets.forEach((element) => {
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          if (isPrinting) {
+            return;
+          }
+          sendPrint(element.dataset.printUrl);
+        });
+      });
     })();
   </script>
 </body>

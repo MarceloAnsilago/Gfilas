@@ -25,3 +25,7 @@ class Config:
 
     # Fuso horário padrão
     TIMEZONE = os.getenv("PAINEL_FUSO_HORARIO", "Etc/GMT+3")
+
+    THERMAL_PRINTER_ENABLED = os.getenv("THERMAL_PRINTER_ENABLED", "1")
+    THERMAL_PRINTER_NAME = os.getenv("THERMAL_PRINTER_NAME", "POS58 DRIVER (TESTADO)")
+    THERMAL_PRINTER_ENCODING = os.getenv("THERMAL_PRINTER_ENCODING", "cp850")

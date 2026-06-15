@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify
 
-from . import db
+from . import db, printer
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,10 @@ FIELD_LABELS = {
     "senha_final": "senha final",
 }
 MAX_PAINEL_ULTIMAS = _read_env_int("PAINEL_MAX_ULTIMAS", 8)
+PRIORIDADE_LABELS = {
+    "normal": "Senha normal",
+    "preferencial": "Senha preferencial",
+}
 
 bp = Blueprint("web", __name__)
 
@@ -115,9 +119,14 @@ def chamar():
         return redirect(url_for("web.chamar"))
 
     chamada_aberta = db.obter_chamada_aberta()
-    data_producao = db.obter_data_producao_ativa()
+    fila_ativa = db.obter_fila_ativa()
+    data_producao = fila_ativa["data"] if fila_ativa else None
     proxima_senha = db.proxima_senha_aguardando()
-    aguardando = db.listar_senhas(status="aguardando", data_iso=data_producao)
+    aguardando = db.listar_senhas(
+        status="aguardando",
+        data_iso=data_producao,
+        origem=fila_ativa["origem"] if fila_ativa else None,
+    )
 
     return render_template(
         "chamar.html",
@@ -127,6 +136,7 @@ def chamar():
         proxima_senha=proxima_senha,
         total_aguardando=len(aguardando),
         data_producao=data_producao,
+        origem_fila_ativa=fila_ativa["origem"] if fila_ativa else None,
     )
 
 @bp.route("/gerar", methods=["GET", "POST"])
@@ -165,12 +175,13 @@ def gerar_senhas():
             if db.senha_existe(numero, iso_data):
                 duplicadas += 1
                 continue
-            db.inserir_senha(numero, unidade, data_execucao=data_escolhida)
+            db.inserir_senha(numero, unidade, data_execucao=data_escolhida, origem="lote")
             inseridas += 1
 
         formatted_date = data_escolhida.strftime("%d/%m/%Y")
-        if inseridas and not db.obter_data_producao():
+        if inseridas and db.obter_origem_padrao() != "totem" and not db.obter_data_producao():
             db.definir_data_producao(iso_data)
+            db.definir_origem_padrao("lote")
         if inseridas:
             flash(
                 f"Sucesso: {inseridas} senhas geradas com sucesso para {formatted_date}.",
@@ -187,7 +198,8 @@ def gerar_senhas():
     total_senhas = db.contar_senhas()
     data_padrao = date.today().isoformat()
     data_producao = db.obter_data_producao_ativa()
-    sessoes_brutas = db.listar_sessoes_por_data()
+    origem_padrao = db.obter_origem_padrao()
+    sessoes_brutas = db.listar_sessoes_por_data(origem="lote")
     sessoes = []
     for sessao in sessoes_brutas:
         data_iso = sessao.get("data")
@@ -195,7 +207,7 @@ def gerar_senhas():
             {
                 **sessao,
                 "data_legivel": _formatar_data_local(data_iso) if data_iso else "",
-                "em_producao": data_iso == data_producao,
+                "em_producao": origem_padrao == "lote" and data_iso == data_producao,
             }
         )
     return render_template(
@@ -214,13 +226,14 @@ def definir_sessao_producao():
         flash("Informe a data da sessao que entrara em producao.", "warning")
         return redirect(url_for("web.gerar_senhas"))
 
-    sessoes = db.listar_sessoes_por_data()
+    sessoes = db.listar_sessoes_por_data(origem="lote")
     datas_validas = {sessao.get("data") for sessao in sessoes}
     if data_str not in datas_validas:
         flash("A sessao selecionada nao foi encontrada.", "warning")
         return redirect(url_for("web.gerar_senhas"))
 
     db.definir_data_producao(data_str)
+    db.definir_origem_padrao("lote")
     flash(
         f"Sessao de {datetime.strptime(data_str, '%Y-%m-%d').strftime('%d/%m/%Y')} marcada como em producao.",
         "success",
@@ -312,7 +325,7 @@ def imprimir():
 @bp.route("/historico", methods=["GET", "POST"])
 def historico():
     registros = db.listar_todas_senhas()
-    sessoes_brutas = db.listar_sessoes_por_data()
+    sessoes_brutas = db.listar_sessoes_por_data(origem="lote")
     sessoes = []
     for sessao in sessoes_brutas:
         data_iso = sessao.get("data")
@@ -443,7 +456,22 @@ def painel():
 
 @bp.route("/senhas")
 def senhas():
-    return render_template("senhas.html")
+    printer_ok, printer_message = printer.printer_ready()
+    return render_template(
+        "senhas.html",
+        printer_ok=printer_ok,
+        printer_message=printer_message,
+    )
+
+
+@bp.route("/senhas/imprimir/<prioridade>", methods=["POST"])
+def imprimir_senha(prioridade: str):
+    return _emitir_e_imprimir_senha(prioridade)
+
+
+@bp.route("/senhas/imprimir/teste", methods=["POST"])
+def imprimir_teste():
+    return _imprimir_teste()
 
 
 @bp.route("/painel/status")
@@ -504,6 +532,80 @@ def _parse_int_from_form(form, campo, default):
         return int(raw)
     except ValueError:
         raise ValueError(campo)
+
+
+def _emitir_e_imprimir_senha(prioridade: str):
+    prioridade = (prioridade or "").strip().lower()
+    if prioridade not in PRIORIDADE_LABELS:
+        return jsonify({"ok": False, "message": "Tipo de senha invalido."}), 400
+
+    unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
+    data_execucao = date.today().isoformat()
+    numero_int = db.proximo_numero_senha(data_execucao)
+    numero = f"{numero_int:03}"
+    horario_local = datetime.now(db.FUSO_HORARIO)
+    try:
+        metadata = printer.imprimir_senha(
+            numero=numero,
+            tipo=PRIORIDADE_LABELS[prioridade],
+            unidade=unidade,
+            data_hora=horario_local,
+            teste=False,
+        )
+        identificador = db.inserir_senha(
+            numero_int,
+            unidade,
+            usuario="totem",
+            data_execucao=datetime.strptime(data_execucao, "%Y-%m-%d").date(),
+            prioridade=prioridade,
+            origem="totem",
+        )
+        db.definir_data_producao(None)
+        db.definir_origem_padrao("totem")
+    except printer.PrinterError as exc:
+        logger.exception("Falha ao imprimir senha %s", prioridade)
+        return jsonify({"ok": False, "message": str(exc)}), 503
+    except Exception:
+        logger.exception("Falha inesperada ao emitir/imprimir senha %s", prioridade)
+        return jsonify({"ok": False, "message": "Erro interno ao emitir a senha."}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "message": f"{PRIORIDADE_LABELS[prioridade]} {numero} enviada para impressora.",
+            "senha": numero,
+            "prioridade": prioridade,
+            "id": identificador,
+            "printer_job": metadata,
+        }
+    )
+
+
+def _imprimir_teste():
+    unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
+    agora = datetime.now(db.FUSO_HORARIO)
+    try:
+        metadata = printer.imprimir_senha(
+            numero="000",
+            tipo="Senha normal",
+            unidade=unidade,
+            data_hora=agora,
+            teste=True,
+        )
+    except printer.PrinterError as exc:
+        logger.exception("Falha ao imprimir teste da impressora")
+        return jsonify({"ok": False, "message": str(exc)}), 503
+    except Exception:
+        logger.exception("Falha inesperada ao imprimir teste")
+        return jsonify({"ok": False, "message": "Erro interno ao imprimir teste."}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "message": "Impressao de teste enviada para a impressora.",
+            "printer_job": metadata,
+        }
+    )
 
 
 def _resolver_playlist_id(valor: str | None) -> str:

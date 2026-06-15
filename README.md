@@ -11,6 +11,7 @@ Painel de senhas em Flask com painel digital, preparado para rodar localmente e 
 - `PAINEL_FUSO_HORARIO`: fuso usado nos carimbos de data/hora (`America/Sao_Paulo`, `Etc/GMT+3`, etc.).
 - `PAINEL_MAX_ULTIMAS`: quantas senhas encerradas aparecem no painel digital.
 - `PAINEL_VIDEO_URL`, `PAINEL_VIDEO_MUTED`, `PAINEL_YT_PLAYLIST_URL`, `PAINEL_YT_PLAYLIST_ID`, `PAINEL_YT_MUTED`: parametros opcionais para o conteudo em tela cheia do painel.
+- `THERMAL_PRINTER_ENABLED`, `THERMAL_PRINTER_NAME`, `THERMAL_PRINTER_ENCODING`: configuracoes da impressora termica ESC/POS no Windows via `win32print`.
 
 Um exemplo de todas as variaveis acima esta em `.env.example`.
 
@@ -36,3 +37,5 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 
 - O repositorio tambem inclui scripts Windows (`bootstrap_venv.bat`, `start_server.bat`) para facilitar o bootstrap em estacoes Windows.
 - Use `requirements.prod.txt` no ambiente local e mantenha `requirements.deploy.txt` alinhado ao que sera instalado dentro do container.
+- A tela `/senhas` agora envia a impressao direto pelo backend Flask para a impressora termica configurada, sem usar `window.print()`.
+- Rotas de impressao: `POST /senhas/imprimir/normal`, `POST /senhas/imprimir/preferencial` e `POST /senhas/imprimir/teste`.
