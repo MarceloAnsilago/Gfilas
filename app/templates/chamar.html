@@ -2,14 +2,97 @@
 
 {% block title %}Chamar Senhas{% endblock %}
 
+{% block extra_css %}
+<style>
+  .fila-totem-lista {
+    display: grid;
+    gap: 12px;
+  }
+
+  .fila-totem-card {
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-left: 6px solid #198754;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 140px minmax(180px, 240px) 1fr auto;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .fila-totem-card.preferencial {
+    border-left-color: #0d6efd;
+  }
+
+  .fila-totem-numero {
+    font-size: 2.4rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #0f172a;
+  }
+
+  .fila-totem-modalidade {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: #e8fff1;
+    color: #146c43;
+  }
+
+  .fila-totem-card.preferencial .fila-totem-modalidade {
+    background: #e8f1ff;
+    color: #0a58ca;
+  }
+
+  .fila-totem-meta strong {
+    display: block;
+    font-size: 1rem;
+    color: #0f172a;
+  }
+
+  .fila-totem-meta span {
+    color: #64748b;
+    font-size: 0.92rem;
+  }
+
+  .fila-totem-ordem {
+    text-align: right;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  @media (max-width: 991.98px) {
+    .fila-totem-card {
+      grid-template-columns: 1fr;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .fila-totem-ordem {
+      text-align: center;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <h2>Chamada de Senhas</h2>
-<p>Informe seu usuário e terminal para iniciar o atendimento das senhas aguardando.</p>
+<p>Informe seu usuario e terminal para iniciar o atendimento das senhas aguardando.</p>
 
 <form method="post" class="card p-4 mb-4 shadow-sm">
   <div class="row g-3 align-items-end">
     <div class="col-md-5">
-      <label class="form-label">Usuário</label>
+      <label class="form-label">Usuario</label>
       <input type="text" name="usuario" class="form-control" value="{{ usuario }}" placeholder="Nome do atendente">
     </div>
     <div class="col-md-3">
@@ -17,7 +100,7 @@
       <input type="text" name="terminal" class="form-control" value="{{ terminal }}" placeholder="Ex: 1">
     </div>
     <div class="col-md-4">
-      <button type="submit" name="acao" value="chamar" class="btn btn-primary w-100">Chamar próximo</button>
+      <button type="submit" name="acao" value="chamar" class="btn btn-primary w-100">Chamar proximo</button>
     </div>
   </div>
 </form>
@@ -37,7 +120,7 @@
       </div>
       <div class="row g-3">
         <div class="col-md-3">
-          <small class="text-muted d-block">Usuário</small>
+          <small class="text-muted d-block">Usuario</small>
           <strong>{{ chamada_aberta.usuario or "N/D" }}</strong>
         </div>
         <div class="col-md-3">
@@ -68,36 +151,70 @@
       <form method="post">
         <input type="hidden" name="usuario" value="{{ usuario }}">
         <input type="hidden" name="terminal" value="{{ terminal }}">
-        <button type="submit" name="acao" value="nao_compareceu" class="btn btn-outline-secondary">Não compareceu</button>
+        <button type="submit" name="acao" value="nao_compareceu" class="btn btn-outline-secondary">Nao compareceu</button>
       </form>
     </div>
   </div>
 {% else %}
-  <div class="alert alert-info">Nenhuma senha está sendo atendida no momento.</div>
+  <div class="alert alert-info">Nenhuma senha esta sendo atendida no momento.</div>
 {% endif %}
 
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h5>Próxima senha aguardando</h5>
-        {% if proxima_senha %}
-          <p class="display-6 mb-1">{{ "%03d"|format(proxima_senha.senha) }}</p>
-          <p class="text-muted mb-0">Unidade {{ proxima_senha.unidade }}</p>
-        {% else %}
-          <p class="text-muted mb-0">Fila vazia.</p>
-        {% endif %}
+{% if origem_fila_ativa == "totem" %}
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="mb-1">Fila gerada em Senhas</h5>
+          <p class="text-muted mb-0">Cada senha emitida no totem aparece abaixo com modalidade e unidade.</p>
+        </div>
+        <span class="badge text-bg-dark">{{ total_aguardando }} aguardando</span>
+      </div>
+
+      {% if aguardando %}
+        <div class="fila-totem-lista">
+          {% for item in aguardando %}
+            <div class="fila-totem-card {{ item.prioridade }}">
+              <div class="fila-totem-numero">{{ "%03d"|format(item.senha) }}</div>
+              <div class="fila-totem-modalidade">{{ prioridade_labels.get(item.prioridade, item.prioridade) }}</div>
+              <div class="fila-totem-meta">
+                <strong>{{ item.unidade }}</strong>
+                <span>Data {{ item.data_execucao or data_producao or "-" }}</span>
+              </div>
+              <div class="fila-totem-ordem">
+                {% if loop.first %}Proxima da fila{% else %}{{ loop.index }}a na fila{% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">Fila vazia.</p>
+      {% endif %}
+    </div>
+  </div>
+{% else %}
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5>Proxima senha aguardando</h5>
+          {% if proxima_senha %}
+            <p class="display-6 mb-1">{{ "%03d"|format(proxima_senha.senha) }}</p>
+            <p class="text-muted mb-0">Unidade {{ proxima_senha.unidade }}</p>
+          {% else %}
+            <p class="text-muted mb-0">Fila vazia.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5>Resumo da fila</h5>
+          <p class="display-6 mb-1">{{ total_aguardando }}</p>
+          <p class="text-muted mb-0">senhas aguardando atendimento.</p>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h5>Resumo da fila</h5>
-        <p class="display-6 mb-1">{{ total_aguardando }}</p>
-        <p class="text-muted mb-0">senhas aguardando atendimento.</p>
-      </div>
-    </div>
-  </div>
-</div>
+{% endif %}
 {% endblock %}

@@ -177,7 +177,11 @@ def contar_senhas():
 
 def listar_senhas(status: str | None = None, data_iso: str | None = None, origem: str | None = None):
     """Retorna senhas (opcionalmente filtradas por status) ordenadas pelo numero."""
-    sql = "SELECT senha, unidade, hora, status, data_execucao, COALESCE(origem, 'lote') AS origem FROM senha"
+    sql = """
+        SELECT senha, unidade, hora, status, data_execucao, prioridade,
+               COALESCE(origem, 'lote') AS origem
+        FROM senha
+    """
     filtros = []
     params: list = []
     if status:
@@ -203,6 +207,7 @@ def listar_senhas(status: str | None = None, data_iso: str | None = None, origem
             "hora": row["hora"],
             "status": row["status"],
             "data_execucao": row["data_execucao"],
+            "prioridade": row["prioridade"] or "normal",
             "origem": row["origem"],
         }
         for row in rows

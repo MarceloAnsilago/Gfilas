@@ -134,9 +134,11 @@ def chamar():
         terminal=terminal,
         chamada_aberta=chamada_aberta,
         proxima_senha=proxima_senha,
+        aguardando=aguardando,
         total_aguardando=len(aguardando),
         data_producao=data_producao,
         origem_fila_ativa=fila_ativa["origem"] if fila_ativa else None,
+        prioridade_labels=PRIORIDADE_LABELS,
     )
 
 @bp.route("/gerar", methods=["GET", "POST"])
