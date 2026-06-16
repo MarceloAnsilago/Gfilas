@@ -23,6 +23,7 @@ pyinstaller ^
     --noconfirm ^
     --clean ^
     --onefile ^
+    --noconsole ^
     --name Painel ^
     --hidden-import win32print ^
     --collect-all dotenv ^

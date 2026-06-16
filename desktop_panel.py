@@ -15,8 +15,10 @@ from print_agent_client import PrintAgentConfig, PrintAgentConfigError, run_agen
 
 if sys.platform == "win32":
     import msvcrt
+    import win32gui
 else:  # pragma: no cover
     msvcrt = None
+    win32gui = None
 
 
 LOGGER_NAME = "painel_desktop"
@@ -29,10 +31,16 @@ class DesktopPanelConfig:
     print_agent_token: str
     thermal_printer_name: str
     thermal_printer_encoding: str
+    thermal_printer_line_ending: str
+    thermal_printer_codepage_command: str
+    thermal_printer_cut: bool
+    thermal_printer_datatype: str
+    thermal_printer_protocol: str
     poll_interval: float
     open_panel: bool
     panel_url: str
     browser_mode: str
+    panel_window_title: str
 
 
 def main() -> int:
@@ -156,10 +164,16 @@ def load_desktop_config(base_dir: Path) -> DesktopPanelConfig:
     token = str(get_value("PRINT_AGENT_TOKEN") or "").strip()
     printer_name = str(get_value("THERMAL_PRINTER_NAME") or "POS58 DRIVER (TESTADO)").strip()
     printer_encoding = str(get_value("THERMAL_PRINTER_ENCODING") or "cp850").strip()
+    printer_line_ending = str(get_value("THERMAL_PRINTER_LINE_ENDING") or "crlf").strip().lower()
+    printer_codepage_command = str(get_value("THERMAL_PRINTER_CODEPAGE_COMMAND") or "").strip()
+    printer_cut = _as_bool(get_value("THERMAL_PRINTER_CUT"), False)
+    printer_datatype = str(get_value("THERMAL_PRINTER_DATATYPE") or "RAW").strip().upper()
+    printer_protocol = str(get_value("THERMAL_PRINTER_PROTOCOL") or "escpos").strip().lower()
     poll_interval_raw = str(get_value("POLL_INTERVAL") or get_value("PRINT_AGENT_POLL_INTERVAL") or "1.0").strip()
     open_panel = _as_bool(get_value("OPEN_PANEL"), True)
-    browser_mode = str(get_value("BROWSER_MODE") or "edge_kiosk").strip().lower()
+    browser_mode = str(get_value("BROWSER_MODE") or "edge_app").strip().lower()
     panel_url = str(get_value("PANEL_URL") or (f"{base_url}/painel" if base_url else "")).strip()
+    panel_window_title = str(get_value("PANEL_WINDOW_TITLE") or "Painel de Senhas").strip()
 
     try:
         poll_interval = max(float(poll_interval_raw), 0.2)
@@ -171,10 +185,16 @@ def load_desktop_config(base_dir: Path) -> DesktopPanelConfig:
         print_agent_token=token,
         thermal_printer_name=printer_name,
         thermal_printer_encoding=printer_encoding,
+        thermal_printer_line_ending=printer_line_ending,
+        thermal_printer_codepage_command=printer_codepage_command,
+        thermal_printer_cut=printer_cut,
+        thermal_printer_datatype=printer_datatype,
+        thermal_printer_protocol=printer_protocol,
         poll_interval=poll_interval,
         open_panel=open_panel,
         panel_url=panel_url,
         browser_mode=browser_mode,
+        panel_window_title=panel_window_title,
     )
 
 
@@ -183,6 +203,11 @@ def apply_config_to_environment(config: DesktopPanelConfig) -> None:
     os.environ["THERMAL_PRINTER_ENABLED"] = "1"
     os.environ["THERMAL_PRINTER_NAME"] = config.thermal_printer_name
     os.environ["THERMAL_PRINTER_ENCODING"] = config.thermal_printer_encoding
+    os.environ["THERMAL_PRINTER_LINE_ENDING"] = config.thermal_printer_line_ending
+    os.environ["THERMAL_PRINTER_CODEPAGE_COMMAND"] = config.thermal_printer_codepage_command
+    os.environ["THERMAL_PRINTER_CUT"] = "1" if config.thermal_printer_cut else "0"
+    os.environ["THERMAL_PRINTER_DATATYPE"] = config.thermal_printer_datatype
+    os.environ["THERMAL_PRINTER_PROTOCOL"] = config.thermal_printer_protocol
     os.environ["PRINT_AGENT_BASE_URL"] = config.base_url
     os.environ["PRINT_AGENT_TOKEN"] = config.print_agent_token
     os.environ["PRINT_AGENT_POLL_INTERVAL"] = str(config.poll_interval)
@@ -204,6 +229,8 @@ def run_panel_foreground(config: DesktopPanelConfig, stop_event: threading.Event
     process = open_panel_process(config)
     try:
         logger.info("Painel aberto em %s usando modo %s.", config.panel_url, config.browser_mode)
+        if config.browser_mode in {"edge_app", "edge_kiosk", "chrome_app", "chrome_kiosk"}:
+            return wait_for_panel_window(config, process, stop_event)
         return process.wait()
     except KeyboardInterrupt:
         logger.info("Encerrando Painel desktop por interrupcao.")
@@ -218,22 +245,32 @@ def open_panel_process(config: DesktopPanelConfig) -> subprocess.Popen:
     mode = config.browser_mode
     if mode == "edge_kiosk":
         executable = resolve_browser_executable("msedge")
-        return subprocess.Popen(
-            [executable, "--kiosk", config.panel_url, "--edge-kiosk-type=fullscreen"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        return open_browser_with_wait(
+            executable,
+            ["--kiosk", config.panel_url, "--edge-kiosk-type=fullscreen"],
+        )
+    if mode == "edge_app":
+        executable = resolve_browser_executable("msedge")
+        return open_browser_with_wait(
+            executable,
+            ["--app=" + config.panel_url, "--start-maximized"],
         )
     if mode == "chrome_kiosk":
         executable = resolve_browser_executable("chrome")
-        return subprocess.Popen(
-            [executable, "--kiosk", "--app=" + config.panel_url],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        return open_browser_with_wait(
+            executable,
+            ["--kiosk", "--app=" + config.panel_url],
+        )
+    if mode == "chrome_app":
+        executable = resolve_browser_executable("chrome")
+        return open_browser_with_wait(
+            executable,
+            ["--app=" + config.panel_url, "--start-maximized"],
         )
     if mode == "pywebview":
         return open_panel_pywebview(config.panel_url)
     raise PrintAgentConfigError(
-        "BROWSER_MODE invalido. Use edge_kiosk, chrome_kiosk ou pywebview."
+        "BROWSER_MODE invalido. Use edge_app, edge_kiosk, chrome_app, chrome_kiosk ou pywebview."
     )
 
 
@@ -252,6 +289,65 @@ def open_panel_pywebview(panel_url: str) -> subprocess.Popen:
         return subprocess.Popen([sys.executable, "-c", script])
     except FileNotFoundError as exc:
         raise PrintAgentConfigError("Modo pywebview indisponivel neste ambiente.") from exc
+
+
+def open_browser_with_wait(executable: str, args: list[str]) -> subprocess.Popen:
+    command = [executable, *args]
+    return subprocess.Popen(
+        command,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def wait_for_panel_window(
+    config: DesktopPanelConfig,
+    process: subprocess.Popen,
+    stop_event: threading.Event,
+) -> int:
+    # O Edge pode trocar o processo pai rapidamente; mantenha o agente vivo
+    # ate a janela ser detectada e depois feche apenas quando ela sumir.
+    window_seen = False
+    warned_no_window = False
+    while not stop_event.is_set():
+        visible = is_panel_window_open(config.panel_window_title)
+        if visible:
+            window_seen = True
+            break
+        if not warned_no_window:
+            logging.getLogger(LOGGER_NAME).info("Aguardando a janela do painel aparecer.")
+            warned_no_window = True
+        stop_event.wait(0.2)
+
+    while not stop_event.is_set():
+        if window_seen and not is_panel_window_open(config.panel_window_title):
+            logging.getLogger(LOGGER_NAME).info("Janela do painel fechada.")
+            return 0
+        stop_event.wait(0.5)
+
+    return 0
+
+
+def is_panel_window_open(title_fragment: str) -> bool:
+    if sys.platform != "win32" or win32gui is None:
+        return True
+
+    target = (title_fragment or "").strip().casefold()
+    if not target:
+        return True
+
+    found = False
+
+    def callback(hwnd, _):
+        nonlocal found
+        if found or not win32gui.IsWindowVisible(hwnd):
+            return
+        title = (win32gui.GetWindowText(hwnd) or "").strip().casefold()
+        if target in title:
+            found = True
+
+    win32gui.EnumWindows(callback, None)
+    return found
 
 
 def resolve_browser_executable(browser: str) -> str:

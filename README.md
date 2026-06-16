@@ -11,7 +11,7 @@ Painel de senhas em Flask com painel digital, preparado para rodar localmente e 
 - `PAINEL_FUSO_HORARIO`: fuso usado nos carimbos de data/hora (`America/Sao_Paulo`, `Etc/GMT+3`, etc.).
 - `PAINEL_MAX_ULTIMAS`: quantas senhas encerradas aparecem no painel digital.
 - `PAINEL_VIDEO_URL`, `PAINEL_VIDEO_MUTED`, `PAINEL_YT_PLAYLIST_URL`, `PAINEL_YT_PLAYLIST_ID`, `PAINEL_YT_MUTED`: parametros opcionais para o conteudo em tela cheia do painel.
-- `THERMAL_PRINTER_MODE`, `THERMAL_PRINTER_ENABLED`, `THERMAL_PRINTER_NAME`, `THERMAL_PRINTER_ENCODING`: configuracoes da impressora termica ESC/POS no Windows via `win32print`.
+- `THERMAL_PRINTER_MODE`, `THERMAL_PRINTER_ENABLED`, `THERMAL_PRINTER_NAME`, `THERMAL_PRINTER_ENCODING`, `THERMAL_PRINTER_LINE_ENDING`, `THERMAL_PRINTER_CODEPAGE_COMMAND`, `THERMAL_PRINTER_CUT`, `THERMAL_PRINTER_DATATYPE`, `THERMAL_PRINTER_PROTOCOL`, `THERMAL_PRINTER_RASTER_WIDTH`: configuracoes da impressora termica no Windows via `win32print`.
 - `PRINT_AGENT_BASE_URL`, `PRINT_AGENT_TOKEN`, `PRINT_AGENT_POLL_INTERVAL`: configuracoes do agente local de impressao usado quando o servidor principal roda no Fly.io.
 - `BASE_URL`, `PANEL_URL`, `POLL_INTERVAL`, `OPEN_PANEL`, `BROWSER_MODE`: configuracoes opcionais do executavel `Painel.exe`.
 
@@ -51,7 +51,7 @@ O servidor web passa a enfileirar cada impressao e o `Painel.exe` busca os jobs 
 
 O novo modo desktop abre o painel e roda o agente de impressao no mesmo processo Windows. O comportamento principal e:
 
-- abre `/painel` em Edge kiosk, Chrome kiosk ou `pywebview`;
+- abre `/painel` em janela dedicada do Edge/Chrome com `X` para fechar, ou em modo kiosk se voce escolher isso explicitamente;
 - consulta `POST /print-agent/jobs/claim`;
 - imprime localmente via ESC/POS USB;
 - marca o job como `completed` ou `error`;
@@ -68,10 +68,15 @@ Copie [painel_config.example.json](/d:/driver/Documentos/SenhasFlask/painel_conf
   "PRINT_AGENT_TOKEN": "coloque-o-token-aqui",
   "THERMAL_PRINTER_NAME": "POS58 DRIVER (TESTADO)",
   "THERMAL_PRINTER_ENCODING": "cp850",
+  "THERMAL_PRINTER_LINE_ENDING": "crlf",
+  "THERMAL_PRINTER_CUT": false,
+  "THERMAL_PRINTER_DATATYPE": "RAW",
+  "THERMAL_PRINTER_PROTOCOL": "escpos_raster",
+  "THERMAL_PRINTER_RASTER_WIDTH": 384,
   "POLL_INTERVAL": 1.0,
   "OPEN_PANEL": true,
   "PANEL_URL": "https://senhasflask.fly.dev/painel",
-  "BROWSER_MODE": "edge_kiosk"
+  "BROWSER_MODE": "edge_app"
 }
 ```
 
@@ -81,10 +86,16 @@ Campos aceitos:
 - `PRINT_AGENT_TOKEN`: mesmo token configurado no servidor.
 - `THERMAL_PRINTER_NAME`: nome da impressora no Windows.
 - `THERMAL_PRINTER_ENCODING`: encoding ESC/POS, por padrao `cp850`.
+- `THERMAL_PRINTER_LINE_ENDING`: use `crlf` por padrao; se a impressora preferir, troque para `lf`.
+- `THERMAL_PRINTER_CODEPAGE_COMMAND`: envia `ESC t n` apenas se voce informar explicitamente um valor como `2`.
+- `THERMAL_PRINTER_CUT`: habilita o comando de corte; por padrao fica desligado para evitar papel em branco em modelos simples.
+- `THERMAL_PRINTER_DATATYPE`: `RAW` para ESC/POS bruto ou `TEXT` para compatibilidade com drivers Windows.
+- `THERMAL_PRINTER_PROTOCOL`: `escpos_raster` para mandar a imagem já rasterizada em bytes ESC/POS, `bitmap` para desenhar via driver Windows, `gdi_text` para texto via GDI, `text` para texto simples ou `escpos` para comandos ESC/POS. Se o modelo imprimir em branco, deixe `escpos_raster` como primeira tentativa.
+- `THERMAL_PRINTER_RASTER_WIDTH`: largura em pixels do cupom rasterizado, normalmente `384` para papel 58 mm.
 - `POLL_INTERVAL`: intervalo de polling em segundos.
 - `OPEN_PANEL`: se `true`, abre o painel visual; se `false`, roda apenas o agente.
 - `PANEL_URL`: URL exata do painel, normalmente `<BASE_URL>/painel`.
-- `BROWSER_MODE`: `edge_kiosk`, `chrome_kiosk` ou `pywebview`.
+- `BROWSER_MODE`: `edge_app` (padrao, com `X`), `edge_kiosk`, `chrome_app`, `chrome_kiosk` ou `pywebview`.
 
 Tambem e possivel usar `.env` com as mesmas chaves, mas `painel_config.json` tem prioridade.
 
