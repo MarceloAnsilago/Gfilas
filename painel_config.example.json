@@ -1,0 +1,10 @@
+{
+  "BASE_URL": "https://senhasflask.fly.dev",
+  "PRINT_AGENT_TOKEN": "coloque-o-token-aqui",
+  "THERMAL_PRINTER_NAME": "POS58 DRIVER (TESTADO)",
+  "THERMAL_PRINTER_ENCODING": "cp850",
+  "POLL_INTERVAL": 1.0,
+  "OPEN_PANEL": true,
+  "PANEL_URL": "https://senhasflask.fly.dev/painel",
+  "BROWSER_MODE": "edge_kiosk"
+}
