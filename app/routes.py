@@ -1,4 +1,4 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 from collections import Counter
 import logging
 import os
@@ -200,7 +200,7 @@ def gerar_senhas():
             )
         if duplicadas:
             flash(
-                f"Info: {duplicadas} senhas ja existiam para {formatted_date}.",
+                f"Info: {duplicadas} senhas já existiam para {formatted_date}.",
                 "info",
             )
 
@@ -242,19 +242,19 @@ def gerar_senhas():
 def definir_sessao_producao():
     data_str = (request.form.get("data_execucao") or "").strip()
     if not data_str:
-        flash("Informe a data da sessao que entrara em producao.", "warning")
+        flash("Informe a data da sessão que entrará em produção.", "warning")
         return redirect(url_for("web.gerar_senhas"))
 
     sessoes = db.listar_sessoes_por_data(origem="lote")
     datas_validas = {sessao.get("data") for sessao in sessoes}
     if data_str not in datas_validas:
-        flash("A sessao selecionada nao foi encontrada.", "warning")
+        flash("A sessão selecionada não foi encontrada.", "warning")
         return redirect(url_for("web.gerar_senhas"))
 
     db.definir_data_producao(data_str)
     db.definir_origem_padrao("lote")
     flash(
-        f"Sessao de {datetime.strptime(data_str, '%Y-%m-%d').strftime('%d/%m/%Y')} marcada como em producao.",
+        f"Sessão de {datetime.strptime(data_str, '%Y-%m-%d').strftime('%d/%m/%Y')} marcada como em produção.",
         "success",
     )
     return redirect(url_for("web.gerar_senhas"))
@@ -388,13 +388,13 @@ def historico():
             inicio_raw = (request.form.get("senha_inicio") or "").strip()
             final_raw = (request.form.get("senha_final") or "").strip()
             if not inicio_raw.isdigit() or not final_raw.isdigit():
-                flash("Informe valores inteiros válidos para o intervalo.", "warning")
+                flash("Informe valores inteiros vÃ¡lidos para o intervalo.", "warning")
                 return redirect(url_for("web.historico"))
 
             inicio = int(inicio_raw)
             final = int(final_raw)
             if inicio < 1 or final < 1:
-                flash("Os números devem ser positivos.", "warning")
+                flash("Os nÃºmeros devem ser positivos.", "warning")
                 return redirect(url_for("web.historico"))
             if final < inicio:
                 flash("A senha final precisa ser maior que a inicial.", "warning")
@@ -578,7 +578,7 @@ def _formatar_data_local(valor_iso: str | None) -> str:
     return dt.strftime("%d/%m/%Y")
 
 def _formatar_data_hora(valor_iso: str | None) -> str:
-    """Formata data e hora para exibição completa."""
+    """Formata data e hora para exibiÃ§Ã£o completa."""
     dt = _converter_para_local(valor_iso)
     return dt.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -808,3 +808,5 @@ def _montar_video_embed() -> str:
         'style="width:100%;height:100%;border:0;background:#000;" '
         'title="Painel - Playlist YouTube"></iframe>'
     ).format(playlist=playlist, mute=mute_param)
+
+

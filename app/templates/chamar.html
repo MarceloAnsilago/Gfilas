@@ -339,7 +339,7 @@
     <div class="card-body">
       <div class="chamar-form-grid">
         <div>
-          <label class="chamar-label">Usuario</label>
+          <label class="chamar-label">Usuário</label>
           <input type="text" name="usuario" class="form-control chamar-input" value="{{ usuario }}" placeholder="Nome do atendente">
         </div>
         <div>
@@ -347,8 +347,8 @@
           <input type="text" name="terminal" class="form-control chamar-input" value="{{ terminal }}" placeholder="Ex: 1">
         </div>
         <div>
-          <label class="chamar-label text-center d-block">Acao principal</label>
-          <button type="submit" name="acao" value="chamar" class="btn btn-primary btn-destaque w-100">Chamar proximo</button>
+          <label class="chamar-label text-center d-block">Ação principal</label>
+          <button type="submit" name="acao" value="chamar" class="btn btn-primary btn-destaque w-100">Chamar próximo</button>
         </div>
       </div>
     </div>
@@ -369,7 +369,7 @@
         </div>
         <div class="atendimento-detalhes">
           <div class="atendimento-detalhe">
-            <small>Usuario</small>
+            <small>Usuário</small>
             <strong>{{ chamada_aberta.usuario or "N/D" }}</strong>
           </div>
           <div class="atendimento-detalhe">
@@ -401,7 +401,7 @@
           <form method="post">
             <input type="hidden" name="usuario" value="{{ usuario }}">
             <input type="hidden" name="terminal" value="{{ terminal }}">
-            <button type="submit" name="acao" value="nao_compareceu" class="btn btn-outline-secondary btn-acao">Nao compareceu</button>
+            <button type="submit" name="acao" value="nao_compareceu" class="btn btn-outline-secondary btn-acao">Não compareceu</button>
           </form>
         </div>
       </div>
@@ -437,7 +437,7 @@
                   <span>Data {{ item.data_execucao or data_producao or "-" }}</span>
                 </div>
                 <div class="fila-totem-ordem">
-                  {% if loop.first %}Proxima da fila{% else %}{{ loop.index }}a na fila{% endif %}
+                  {% if loop.first %}Próxima da fila{% else %}{{ loop.index }}a na fila{% endif %}
                 </div>
               </div>
             {% endfor %}
@@ -452,7 +452,7 @@
       <div class="col-md-6">
         <div class="card h-100 shadow-sm fila-card">
           <div class="card-body">
-            <h5>Proxima senha aguardando</h5>
+            <h5>Próxima senha aguardando</h5>
             {% if proxima_senha %}
               <p class="display-6 mb-1">{{ "%03d"|format(proxima_senha.senha) }}</p>
               <p class="text-muted mb-0">Unidade {{ proxima_senha.unidade }}</p>
