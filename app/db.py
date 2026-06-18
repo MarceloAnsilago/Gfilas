@@ -393,6 +393,65 @@ def reiniciar_numero_totem(prioridade: str) -> None:
     registrar_numero_totem(prioridade, valor_base)
 
 
+def contar_remanescentes_totem(prioridade: str) -> int:
+    """Conta senhas do totem da mesma prioridade ainda nao encerradas na data ativa."""
+    prioridade = _normalizar_prioridade(prioridade)
+    with conectar() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM senha
+            WHERE COALESCE(origem, 'lote') = 'totem'
+              AND prioridade = ?
+              AND status IN ('aguardando', 'aberto')
+              AND COALESCE(data_execucao, substr(hora, 1, 10)) = (
+                  SELECT COALESCE(data_execucao, substr(hora, 1, 10))
+                  FROM senha
+                  WHERE COALESCE(origem, 'lote') = 'totem'
+                    AND prioridade = ?
+                    AND status IN ('aguardando', 'aberto')
+                  ORDER BY COALESCE(data_execucao, substr(hora, 1, 10)) DESC, senha ASC
+                  LIMIT 1
+              )
+            """,
+            (prioridade, prioridade),
+        ).fetchone()
+    return int(row["total"]) if row and row["total"] is not None else 0
+
+
+def excluir_remanescentes_totem(prioridade: str) -> int:
+    """Remove senhas remanescentes do totem da mesma prioridade na data ativa."""
+    prioridade = _normalizar_prioridade(prioridade)
+    with conectar() as conn:
+        data_ref = conn.execute(
+            """
+            SELECT COALESCE(data_execucao, substr(hora, 1, 10)) AS data_ref
+            FROM senha
+            WHERE COALESCE(origem, 'lote') = 'totem'
+              AND prioridade = ?
+              AND status IN ('aguardando', 'aberto')
+            ORDER BY data_ref DESC, senha ASC
+            LIMIT 1
+            """,
+            (prioridade,),
+        ).fetchone()
+        if not data_ref or not data_ref["data_ref"]:
+            return 0
+
+        cursor = conn.execute(
+            """
+            DELETE FROM senha
+            WHERE COALESCE(origem, 'lote') = 'totem'
+              AND prioridade = ?
+              AND status IN ('aguardando', 'aberto')
+              AND COALESCE(data_execucao, substr(hora, 1, 10)) = ?
+            """,
+            (prioridade, data_ref["data_ref"]),
+        )
+        conn.commit()
+    return cursor.rowcount
+
+
 def criar_print_job(
     numero: str,
     tipo: str,

@@ -212,6 +212,8 @@ def gerar_senhas():
     origem_padrao = db.obter_origem_padrao()
     ultimo_normal = db.obter_ultimo_numero_totem("normal")
     ultimo_preferencial = db.obter_ultimo_numero_totem("preferencial")
+    remanescentes_normal = db.contar_remanescentes_totem("normal")
+    remanescentes_preferencial = db.contar_remanescentes_totem("preferencial")
     sessoes_brutas = db.listar_sessoes_por_data(origem="lote")
     sessoes = []
     for sessao in sessoes_brutas:
@@ -231,6 +233,8 @@ def gerar_senhas():
         data_producao=data_producao,
         ultimo_normal=ultimo_normal,
         ultimo_preferencial=ultimo_preferencial,
+        remanescentes_normal=remanescentes_normal,
+        remanescentes_preferencial=remanescentes_preferencial,
     )
 
 
@@ -289,8 +293,20 @@ def reiniciar_totem():
         flash("Prioridade invalida para reinicio.", "warning")
         return redirect(url_for("web.gerar_senhas"))
 
+    remover_remanescentes = request.form.get("remover_remanescentes") == "1"
+    removidas = 0
+    if remover_remanescentes:
+        removidas = db.excluir_remanescentes_totem(prioridade)
+
     db.reiniciar_numero_totem(prioridade)
-    flash(f"Contador de {PRIORIDADE_LABELS[prioridade].lower()} reiniciado.", "success")
+    if remover_remanescentes:
+        _invalidate_painel_status_cache()
+        flash(
+            f"Contador de {PRIORIDADE_LABELS[prioridade].lower()} reiniciado e {removidas} senha(s) remanescente(s) removida(s).",
+            "success",
+        )
+    else:
+        flash(f"Contador de {PRIORIDADE_LABELS[prioridade].lower()} reiniciado.", "success")
     return redirect(url_for("web.gerar_senhas"))
 
 

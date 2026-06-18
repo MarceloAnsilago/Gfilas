@@ -11,9 +11,21 @@
           <div class="text-muted text-uppercase small fw-semibold">Ultima preferencial</div>
           <div class="display-5 mb-1">{{ "%03d"|format(ultimo_preferencial) }}</div>
           <div class="text-muted small">Faixa 001 a 100</div>
+          <div class="text-muted small">{{ remanescentes_preferencial }} remanescente(s) ativa(s)</div>
         </div>
-        <form method="POST" action="{{ url_for('web.reiniciar_totem') }}" class="m-0">
+        <form
+          method="POST"
+          action="{{ url_for('web.reiniciar_totem') }}"
+          class="m-0"
+          onsubmit="if(this.querySelector('input[name=&quot;remover_remanescentes&quot;]').checked){return confirm('Confirma reiniciar e remover as senhas remanescentes preferenciais?');} return true;"
+        >
           <input type="hidden" name="prioridade" value="preferencial">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="remover_remanescentes" value="1" id="remover-preferencial">
+            <label class="form-check-label small" for="remover-preferencial">
+              Remover remanescentes
+            </label>
+          </div>
           <button type="submit" class="btn btn-outline-primary">Reiniciar</button>
         </form>
       </div>
@@ -26,9 +38,21 @@
           <div class="text-muted text-uppercase small fw-semibold">Ultima normal</div>
           <div class="display-5 mb-1">{{ "%03d"|format(ultimo_normal) }}</div>
           <div class="text-muted small">Faixa 101 em diante</div>
+          <div class="text-muted small">{{ remanescentes_normal }} remanescente(s) ativa(s)</div>
         </div>
-        <form method="POST" action="{{ url_for('web.reiniciar_totem') }}" class="m-0">
+        <form
+          method="POST"
+          action="{{ url_for('web.reiniciar_totem') }}"
+          class="m-0"
+          onsubmit="if(this.querySelector('input[name=&quot;remover_remanescentes&quot;]').checked){return confirm('Confirma reiniciar e remover as senhas remanescentes normais?');} return true;"
+        >
           <input type="hidden" name="prioridade" value="normal">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="remover_remanescentes" value="1" id="remover-normal">
+            <label class="form-check-label small" for="remover-normal">
+              Remover remanescentes
+            </label>
+          </div>
           <button type="submit" class="btn btn-outline-success">Reiniciar</button>
         </form>
       </div>
