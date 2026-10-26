@@ -24,4 +24,4 @@ COPY config.py run.py ./
 RUN mkdir -p /data
 
 EXPOSE 8080
-CMD ["gunicorn","-w","1","--threads","4","-k","gthread","-b","0.0.0.0:8080","app.wsgi:app"]
+CMD ["gunicorn","-w","1","--threads","32","-k","gthread","-b","0.0.0.0:8080","app.wsgi:app"]

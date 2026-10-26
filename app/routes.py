@@ -2,11 +2,10 @@
 from collections import Counter
 import logging
 import os
-import time
 import json
 from urllib.parse import parse_qs, urlparse
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify
+from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify, Response, current_app
 
 from . import db, printer
 
@@ -38,8 +37,6 @@ PRIORIDADE_LABELS = {
 }
 
 bp = Blueprint("web", __name__)
-_PAINEL_STATUS_CACHE = {"expires_at": 0.0, "payload": None}
-_PAINEL_STATUS_TTL_SECONDS = 0.75
 
 
 @bp.route("/")
@@ -90,7 +87,7 @@ def chamar():
                     "terminal": int(terminal),
                 },
             )
-            _invalidate_painel_status_cache()
+            _notify_painel()
             flash(f"Senha {int(proxima['senha']):03} chamada no terminal {terminal}.", "success")
             return redirect(url_for("web.chamar"))
 
@@ -107,21 +104,21 @@ def chamar():
                 numero_atual = 1
             novo_valor = f"chamando {numero_atual + 1}"
             db.atualizar_senha(chamada_atual["id"], {"resposta": novo_valor, "hora": datetime.now(db.FUSO_HORARIO).isoformat()})
-            _invalidate_painel_status_cache()
+            _notify_painel()
             flash("Senha chamada novamente.", "success")
         elif acao == "compareceu":
             db.atualizar_senha(
                 chamada_atual["id"],
                 {"resposta": "compareceu", "status": "encerrado", "hora": datetime.now(db.FUSO_HORARIO).isoformat()},
             )
-            _invalidate_painel_status_cache()
+            _notify_painel()
             flash("Senha encerrada como compareceu.", "success")
         elif acao == "nao_compareceu":
             db.atualizar_senha(
                 chamada_atual["id"],
                 {"resposta": "nao compareceu", "status": "encerrado", "hora": datetime.now(db.FUSO_HORARIO).isoformat()},
             )
-            _invalidate_painel_status_cache()
+            _notify_painel()
             flash("Senha encerrada como nao compareceu.", "info")
 
         return redirect(url_for("web.chamar"))
@@ -193,7 +190,7 @@ def gerar_senhas():
             db.definir_data_producao(iso_data)
             db.definir_origem_padrao("lote")
         if inseridas:
-            _invalidate_painel_status_cache()
+            _notify_painel()
             flash(
                 f"Sucesso: {inseridas} senhas geradas com sucesso para {formatted_date}.",
                 "success",
@@ -253,6 +250,7 @@ def definir_sessao_producao():
 
     db.definir_data_producao(data_str)
     db.definir_origem_padrao("lote")
+    _notify_painel()
     flash(
         f"Sessão de {datetime.strptime(data_str, '%Y-%m-%d').strftime('%d/%m/%Y')} marcada como em produção.",
         "success",
@@ -275,7 +273,7 @@ def excluir_sessao_senhas():
 
     removidas = db.excluir_senhas_por_data(data_str)
     if removidas:
-        _invalidate_painel_status_cache()
+        _notify_painel()
         flash(
             f"Sessão de {data_formatada.strftime('%d/%m/%Y')} removida ({removidas} senhas).",
             "success",
@@ -300,7 +298,7 @@ def reiniciar_totem():
 
     db.reiniciar_numero_totem(prioridade)
     if remover_remanescentes:
-        _invalidate_painel_status_cache()
+        _notify_painel()
         flash(
             f"Contador de {PRIORIDADE_LABELS[prioridade].lower()} reiniciado e {removidas} senha(s) remanescente(s) removida(s).",
             "success",
@@ -406,6 +404,8 @@ def historico():
                 return redirect(url_for("web.historico"))
 
             encerradas = db.encerrar_sequencia_senhas(inicio, final, data_iso=sessao_data)
+            if encerradas:
+                _notify_painel()
             if not encerradas:
                 flash(
                     "Nenhuma senha aguardando foi encontrada nesse intervalo.",
@@ -442,7 +442,7 @@ def historico():
             else "Senha encerrada como nao compareceu."
         )
         db.encerrar_senha(encerrar_id, resposta_padrao=resposta_padrao)
-        _invalidate_painel_status_cache()
+        _notify_painel()
         flash(mensagem, "success")
         return redirect(url_for("web.historico"))
 
@@ -521,15 +521,25 @@ def imprimir_teste():
 
 @bp.route("/painel/status")
 def painel_status():
-    agora = time.monotonic()
-    cache = _PAINEL_STATUS_CACHE
-    if cache["payload"] is not None and agora < cache["expires_at"]:
-        return jsonify(cache["payload"])
+    return jsonify(db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS))
 
-    payload = db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS)
-    cache["payload"] = payload
-    cache["expires_at"] = agora + _PAINEL_STATUS_TTL_SECONDS
-    return jsonify(payload)
+
+@bp.route("/painel/events")
+def painel_events():
+    app = current_app._get_current_object()
+    events = app.extensions["painel_events"]
+
+    def load_snapshot():
+        # Apenas a leitura precisa do contexto; nao retem a requisicao
+        # ou uma conexao SQLite durante a espera por notificacoes.
+        with app.app_context():
+            return db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS)
+
+    return Response(
+        events.stream(load_snapshot),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
 
 
 @bp.route("/print-agent/jobs/claim", methods=["POST"])
@@ -617,9 +627,10 @@ def _parse_int_from_form(form, campo, default):
         raise ValueError(campo)
 
 
-def _invalidate_painel_status_cache():
-    _PAINEL_STATUS_CACHE["payload"] = None
-    _PAINEL_STATUS_CACHE["expires_at"] = 0.0
+def _notify_painel():
+    current_app.extensions["painel_events"].publish(
+        lambda: db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS)
+    )
 
 
 def _validar_print_agent():
@@ -689,7 +700,7 @@ def _emitir_e_imprimir_senha(prioridade: str):
         db.registrar_numero_totem(prioridade, numero_int)
         db.definir_data_producao(None)
         db.definir_origem_padrao("totem")
-        _invalidate_painel_status_cache()
+        _notify_painel()
     except printer.PrinterError as exc:
         logger.exception("Falha ao imprimir senha %s", prioridade)
         return jsonify({"ok": False, "message": str(exc)}), 503

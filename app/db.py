@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from flask import current_app as app
 from datetime import datetime, timedelta, time
@@ -20,6 +21,7 @@ COLUNAS = (
     "atualizado_em",
 )
 
+@contextmanager
 def conectar():
     """Abre conexão SQLite"""
     db_path = Path(app.config["DB_PATH"])
@@ -29,7 +31,11 @@ def conectar():
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 def init_db():
     """Cria tabela se não existir"""

@@ -6,12 +6,14 @@ except Exception:  # Tolerate absence/incompatibility in production
 from dotenv import load_dotenv
 from pathlib import Path
 from . import db
+from .painel_events import PainelEvents
 
 def create_app():
     # carrega o .env da RAIZ do projeto (…/SenhasFlask/.env)
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
     app = Flask(__name__)
+    app.extensions["painel_events"] = PainelEvents()
     app.config.from_object("config.Config")
 
     if Bootstrap is not None:

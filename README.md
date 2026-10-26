@@ -30,6 +30,33 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 
 ## Deploy (Fly.io)
 
+### Painel em tempo real (SSE)
+
+O `/painel` recebe chamadas, rechamadas e encerramentos por `/painel/events`, sem consultar `/painel/status` a cada segundo. O servidor consulta o SQLite ao abrir a conexao e ao alterar as senhas; os sinais de manutencao da conexao nao consultam o banco. Ao reconectar, o painel recebe o estado atual. Anuncios antigos ocorridos durante uma queda nao sao reproduzidos em sequencia.
+
+Execute **um unico processo/replica** da aplicacao: as notificacoes sao compartilhadas em memoria entre as threads desse processo. O Docker usa Gunicorn com `-w 1 --threads 32`; o `start_server.bat` usa Waitress com 32 threads. Cada painel conectado ocupa uma thread; mantenha capacidade livre para os atendentes. Para varios processos ou servidores, sera necessario um canal compartilhado de eventos, como Redis. Alteracoes feitas diretamente no SQLite por ferramentas externas nao geram avisos.
+
+Na Oracle ou em outro servidor com Nginx, configure a rota de eventos no mesmo dominio do site:
+
+```nginx
+location /painel/events {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 60s;
+}
+```
+
+Ajuste a porta ao servidor da aplicacao. O agente local de impressao continua consultando sua fila normalmente; esta mudanca trata das chamadas no painel. Reinicie o servidor e atualize as abas dos paineis apos instalar a atualizacao.
+
+Para validar sem alterar o banco real: `python -m unittest discover -s tests -v`.
+
+Referencias: [streaming no Flask](https://flask.palletsprojects.com/en/stable/patterns/streaming/) e [SSE no navegador](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events).
+
+### Publicar no Fly.io
+
 1. Instale e autentique-se no `flyctl`.
 2. Execute `flyctl deploy -a senhasflask`; o `Dockerfile` utiliza `requirements.deploy.txt` para instalar somente o necessario em producao.
 3. O `fly.toml` ja configura o volume `/data` (montado como `app_data`) e define `PAINEL_DB_PATH=/data/ultima_senha.db` para manter o SQLite persistente.

@@ -97,7 +97,7 @@
     <div class="hero-title">Pegue sua senha</div>
     <div class="side-card">
       <h2>Senhas chamadas</h2>
-      <p class="text-muted" style="margin:4px 0 0; color:#64748b;">Atualiza automaticamente</p>
+      <p id="connection-status" role="status" class="text-muted" style="margin:4px 0 0; color:#64748b;">Conectando ao painel...</p>
     </div>
   </div>
   <div class="wrap">
@@ -120,7 +120,8 @@
 
   <script>
   (function(){
-    const STATUS_URL = "{{ url_for('web.painel_status') }}";
+    const EVENTS_URL = "{{ url_for('web.painel_events') }}";
+    const connectionStatus = document.getElementById('connection-status');
     const lista = document.getElementById('lista');
     const backdrop = document.getElementById('backdrop');
     const elSenha = document.getElementById('modal-senha');
@@ -134,14 +135,6 @@
     const voiceEnabled = true;
 
     const z3 = (n)=> (n==null ? "000" : String(parseInt(n||0,10)).padStart(3,'0'));
-
-    async function solicitarStatus(){
-      try{
-        const resp = await fetch(STATUS_URL + '?ts=' + Date.now(), {cache:'no-store'});
-        if(resp.ok){ return await resp.json(); }
-      }catch(err){ console.error(err); }
-      return null;
-    }
 
     function renderCards(items){
       const dados = (items||[]).filter(it => (it.status||'').toLowerCase()==='encerrado');
@@ -220,8 +213,7 @@
       setTimeout(()=>backdrop.style.display='none', 4500);
     }
 
-    async function tick(){
-      const status = await solicitarStatus();
+    function atualizarPainel(status){
       if(!status) return;
 
       renderCards(status.ultimas_senhas || []);
@@ -243,16 +235,40 @@
       if(chave !== lastKey){ lastKey = chave; }
     }
 
-    const POLLING_INTERVAL = 1000;
-    let pollingId = null;
+    let eventSource = null;
 
     function iniciar(){
-      if(pollingId !== null) return;
-      tick();
-      pollingId = setInterval(()=>tick(), POLLING_INTERVAL);
+      if(eventSource !== null) return;
+      if(!window.EventSource){
+        connectionStatus.textContent = 'Atualize o navegador para receber chamadas em tempo real.';
+        return;
+      }
+      eventSource = new EventSource(EVENTS_URL);
+      eventSource.addEventListener('status', (event)=>{
+        try{
+          atualizarPainel(JSON.parse(event.data));
+          connectionStatus.textContent = 'Conectado em tempo real';
+        }catch(error){
+          console.error(error);
+          connectionStatus.textContent = 'Falha ao atualizar o painel.';
+        }
+      });
+      eventSource.onerror = ()=>{
+        connectionStatus.textContent = 'Conexao interrompida. Reconectando...';
+      };
     }
 
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ tick(); } });
+    function desconectar(){
+      if(eventSource !== null){ eventSource.close(); eventSource = null; }
+    }
+
+    // EventSource reconecta automaticamente e recebe o estado atual.
+    // Reabrir ao voltar para a aba tambem recupera conexoes suspensas.
+    document.addEventListener('visibilitychange', ()=>{
+      if(!document.hidden){ desconectar(); iniciar(); }
+    });
+    window.addEventListener('pagehide', desconectar);
+    window.addEventListener('pageshow', iniciar);
 
     iniciar();
   })();
