@@ -49,6 +49,8 @@ O servidor web passa a enfileirar cada impressao e o `Painel.exe` busca os jobs 
 
 ## Painel.exe
 
+Para executar o painel desktop pelo Python no Windows, instale as dependencias com `python -m pip install -r requirements.desktop.txt` no ambiente virtual. No VS Code, selecione `venv\Scripts\python.exe` em `Python: Select Interpreter`.
+
 O novo modo desktop abre o painel e roda o agente de impressao no mesmo processo Windows. O comportamento principal e:
 
 - abre `/painel` em janela dedicada do Edge/Chrome com `X` para fechar, ou em modo kiosk se voce escolher isso explicitamente;
