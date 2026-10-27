@@ -1,9 +1,10 @@
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Thread
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from flask import Flask
 
@@ -19,6 +20,42 @@ def payload(chunk):
 
 
 class PainelEventsTests(unittest.TestCase):
+    def test_queue_fragment_tracks_totem_emissions_and_calls(self):
+        with TemporaryDirectory() as directory, patch.dict(os.environ, {"THERMAL_PRINTER_MODE": "queue"}):
+            templates = Path(__file__).resolve().parents[1] / "app" / "templates"
+            app = Flask(__name__, template_folder=str(templates))
+            app.config.update(TESTING=True, SECRET_KEY="test", DB_PATH=str(Path(directory) / "test.db"))
+            app.extensions["painel_events"] = PainelEvents()
+            app.register_blueprint(bp)
+            with app.app_context():
+                db.init_db()
+            client = app.test_client()
+            page = client.get("/chamar?usuario=Operador&terminal=3").get_data(as_text=True)
+            self.assertIn('id="fila-live"', page)
+            self.assertIn('value="Operador"', page)
+            self.assertIn('chamar-live.js', page)
+            response = client.get("/painel/events", buffered=False)
+            stream = iter(response.response)
+            next(stream)
+            try:
+                for priority in ("normal", "preferencial"):
+                    emitted = client.post(f"/senhas/imprimir/{priority}")
+                    self.assertEqual(emitted.status_code, 200)
+                    next(stream)  # Emissao tambem notifica, mesmo sem mudar senha_atual.
+                fragment = client.get("/chamar?fragment=fila").get_data(as_text=True)
+                self.assertIn("2 aguardando", fragment)
+                self.assertIn('fila-totem-card normal', fragment)
+                self.assertIn('fila-totem-card preferencial', fragment)
+                self.assertNotIn('<html', fragment)
+                self.assertNotIn('name="usuario"', fragment)
+                self.assertNotIn('window.location.reload()', fragment)
+                client.post("/chamar", data={"acao": "chamar", "usuario": "Operador", "terminal": "3"})
+                next(stream)
+                fragment = client.get("/chamar?fragment=fila").get_data(as_text=True)
+                self.assertIn("1 aguardando", fragment)
+            finally:
+                response.close()
+
     def test_idle_heartbeat_does_not_read_database(self):
         events = PainelEvents()
         load = Mock(return_value={"senha_atual": None})

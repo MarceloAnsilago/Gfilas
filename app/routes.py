@@ -134,7 +134,7 @@ def chamar():
     )
 
     return render_template(
-        "chamar.html",
+        "_chamar_fila.html" if request.args.get("fragment") == "fila" else "chamar.html",
         usuario=usuario,
         terminal=terminal,
         chamada_aberta=chamada_aberta,

@@ -1,0 +1,63 @@
+  {% if origem_fila_ativa == "totem" %}
+    <div class="card fila-card shadow-sm">
+      <div class="card-body">
+        <div class="fila-topo">
+          <div>
+            <h5 class="mb-1">Fila gerada em Senhas</h5>
+            <p class="text-muted mb-0">Cada senha emitida no totem aparece abaixo com modalidade e unidade.</p>
+          </div>
+          <div class="fila-controles">
+            <button type="button" class="btn btn-outline-secondary" data-refresh-fila>
+              Atualizar
+            </button>
+            <span class="badge text-bg-dark">{{ total_aguardando }} aguardando</span>
+          </div>
+        </div>
+
+        {% if aguardando %}
+          <div class="fila-totem-lista">
+            {% for item in aguardando %}
+              <div class="fila-totem-card {{ item.prioridade }}">
+                <div class="fila-totem-numero">{{ "%03d"|format(item.senha) }}</div>
+                <div class="fila-totem-modalidade">{{ prioridade_labels.get(item.prioridade, item.prioridade) }}</div>
+                <div class="fila-totem-meta">
+                  <strong>{{ item.unidade }}</strong>
+                  <span>Data {{ item.data_execucao or data_producao or "-" }}</span>
+                </div>
+                <div class="fila-totem-ordem">
+                  {% if loop.first %}Próxima da fila{% else %}{{ loop.index }}a na fila{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="estado-vazio">Fila vazia.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100 shadow-sm fila-card">
+          <div class="card-body">
+            <h5>Próxima senha aguardando</h5>
+            {% if proxima_senha %}
+              <p class="display-6 mb-1">{{ "%03d"|format(proxima_senha.senha) }}</p>
+              <p class="text-muted mb-0">Unidade {{ proxima_senha.unidade }}</p>
+            {% else %}
+              <p class="text-muted mb-0">Fila vazia.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100 shadow-sm fila-card">
+          <div class="card-body">
+            <h5>Resumo da fila</h5>
+            <p class="display-6 mb-1">{{ total_aguardando }}</p>
+            <p class="text-muted mb-0">senhas aguardando atendimento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
