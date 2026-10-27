@@ -74,6 +74,26 @@
       .card-footer { padding: 13px 16px; min-height: 48px; font-size: .85rem; }
       .notice { padding: 14px; gap: 12px; }
     }
+    /* Botoes amplos e acessibilidade */
+    .screen { max-width: 1440px; }
+    .cards { gap: 24px; }
+    .card { min-height: clamp(320px, 43vh, 540px); }
+    .card-body { padding: clamp(28px, 4vw, 56px); gap: 24px; }
+    .icon-shell { width: 100px; height: 100px; border-radius: 26px; }
+    .icon-shell svg { width: 64px; height: 64px; }
+    .title { font-size: clamp(2rem, 3.4vw, 3.2rem); }
+    .desc { font-size: clamp(1rem, 1.5vw, 1.25rem); }
+    .card-footer { min-height: 76px; padding: 22px 32px; font-size: 1.1rem; }
+    @media (max-width: 600px) {
+      .cards { gap: 18px; }
+      .card { min-height: 230px; }
+      .card-body { padding: 26px 20px; gap: 12px 18px; }
+      .icon-shell { width: 72px; height: 72px; border-radius: 20px; }
+      .icon-shell svg { width: 46px; height: 46px; }
+      .title { font-size: clamp(1.3rem, 5vw, 1.8rem); }
+      .desc { font-size: .95rem; }
+      .card-footer { min-height: 64px; padding: 18px 20px; font-size: 1rem; }
+    }
     @media (prefers-reduced-motion: reduce) { .card, .card-footer svg { transition: none; transform: none !important; } }
   </style>
 </head>
@@ -164,10 +184,10 @@
           <div class="card-body">
             <div class="icon-shell" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <path d="M12 18.2c-3.8-2.4-6.7-4.8-6.7-8.1a3.8 3.8 0 0 1 6.7-2.5 3.8 3.8 0 0 1 6.7 2.5c0 3.3-2.9 5.7-6.7 8.1Z"></path>
-                <circle cx="9.1" cy="10.4" r="1.1"></circle>
-                <circle cx="14.9" cy="10.4" r="1.1"></circle>
-                <path d="M9.4 13.9c.7.6 1.6.9 2.6.9s1.9-.3 2.6-.9"></path>
+                <circle cx="11" cy="4" r="2"></circle>
+                <path d="m10 8 1 6h6l3 6 2-1"></path>
+                <path d="M10.5 11H16"></path>
+                <path d="M8 10a6 6 0 1 0 7 8"></path>
               </svg>
             </div>
             <h2 class="title">Senha preferencial</h2>
