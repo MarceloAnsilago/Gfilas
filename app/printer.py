@@ -240,7 +240,6 @@ def _montar_payload(
             "\x1ba\x01",
             "-" * 32 + newline,
             f"{aviso}{newline}",
-            f"DIRIJA-SE AO PAINEL{newline}",
             newline,
             "\x1ba\x00",
             f"PROTOCOLO GERADO PELO SISTEMA{newline}",
@@ -283,7 +282,6 @@ def _montar_payload_texto(
         f"HORA: {data_hora.strftime('%H:%M:%S')}",
         "-" * 32,
         aviso,
-        "DIRIJA-SE AO PAINEL",
         "",
         "PROTOCOLO GERADO PELO SISTEMA",
         "",
@@ -352,7 +350,6 @@ def _imprimir_via_gdi(
             f"HORA: {data_hora.strftime('%H:%M:%S')}",
             "-" * 24,
             "NAO CONSUME SENHA REAL" if teste else "AGUARDE O CHAMADO NO PAINEL",
-            "DIRIJA-SE AO PAINEL",
             "",
             "PROTOCOLO GERADO PELO SISTEMA",
         ]
@@ -498,7 +495,6 @@ def _build_receipt_lines(numero: str, tipo: str, unidade: str, data_hora: dateti
         f"HORA: {data_hora.strftime('%H:%M:%S')}",
         "",
         aviso,
-        "DIRIJA-SE AO PAINEL",
         "",
         "PROTOCOLO GERADO PELO SISTEMA",
     ]
