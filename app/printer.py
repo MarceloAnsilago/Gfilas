@@ -533,6 +533,20 @@ def _render_receipt_image(lines: list[str], width: int):
         commands.append(("line", (margin, y, width - margin, y)))
         y += max(1, round(scale))
 
+    logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "logo.png")
+    if os.path.isfile(logo_path):
+        try:
+            with Image.open(logo_path) as source:
+                logo = Image.new("RGB", source.size, "white")
+                rgba = source.convert("RGBA")
+                logo.paste(rgba, mask=rgba.getchannel("A"))
+            logo.thumbnail((min(available, round(128 * scale)), round(128 * scale)), Image.Resampling.LANCZOS)
+            commands.append(("image", ((width - logo.width) // 2, y), logo))
+            y += logo.height
+            space(14)
+        except OSError:
+            logger.exception("Nao foi possivel carregar o logo do comprovante")
+
     text(lines[0], 26, bold=True)
     text(lines[2], 15, gap=0)
     space(18)
@@ -558,6 +572,8 @@ def _render_receipt_image(lines: list[str], width: int):
     for command in commands:
         if command[0] == "text":
             draw.text(command[1], command[2], font=command[3], fill="black")
+        elif command[0] == "image":
+            image.paste(command[2], command[1])
         else:
             draw.line(command[1], fill="black", width=max(1, round(scale)))
     return image
