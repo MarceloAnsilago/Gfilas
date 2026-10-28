@@ -25,6 +25,15 @@ LOGGER_NAME = "painel_desktop"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
+def show_startup_error(message: str, base_dir: Path) -> None:
+    details = f"{message}\n\nDetalhes em: {base_dir / 'logs' / 'painel.log'}"
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, details, "Falha ao iniciar o Painel", 0x10)
+    else:
+        print(details)
+
+
 @dataclass(slots=True)
 class DesktopPanelConfig:
     base_url: str
@@ -51,7 +60,7 @@ def main() -> int:
         lock_handle = acquire_single_instance_lock(base_dir)
     except RuntimeError as exc:
         logging.getLogger(LOGGER_NAME).error(str(exc))
-        print(str(exc))
+        show_startup_error(str(exc), base_dir)
         return 1
 
     try:
@@ -86,11 +95,11 @@ def main() -> int:
         return run_panel_foreground(config, stop_event)
     except PrintAgentConfigError as exc:
         logging.getLogger(LOGGER_NAME).error(str(exc))
-        print(str(exc))
+        show_startup_error(str(exc), base_dir)
         return 1
-    except Exception:
+    except Exception as exc:
         logging.getLogger(LOGGER_NAME).exception("Falha fatal no Painel desktop.")
-        print("Falha fatal ao iniciar o Painel. Consulte logs/painel.log.")
+        show_startup_error(f"Falha ao iniciar o Painel: {exc}", base_dir)
         return 1
     finally:
         release_single_instance_lock(lock_handle)
@@ -122,7 +131,11 @@ def acquire_single_instance_lock(base_dir: Path):
         return None
 
     lock_path = base_dir / "painel.lock"
-    handle = open(lock_path, "a+b")
+    try:
+        handle = open(lock_path, "r+b")
+    except FileNotFoundError:
+        handle = open(lock_path, "a+b")
+    handle.seek(0)
     try:
         msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
     except OSError as exc:
@@ -142,6 +155,8 @@ def release_single_instance_lock(lock_handle) -> None:
         if sys.platform == "win32" and msvcrt is not None:
             lock_handle.seek(0)
             msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+    except OSError:
+        logging.getLogger(LOGGER_NAME).exception("Falha ao liberar painel.lock; fechando o arquivo.")
     finally:
         lock_handle.close()
 
