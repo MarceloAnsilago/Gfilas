@@ -501,57 +501,66 @@ def _build_receipt_lines(numero: str, tipo: str, unidade: str, data_hora: dateti
 
 
 def _render_receipt_image(lines: list[str], width: int):
-    bg = "white"
-    fg = "black"
-    margin = 18
-    font_title = _load_font(30, bold=True)
-    font_label = _load_font(22, bold=False)
-    font_number = _load_font(54, bold=True)
+    """Diagrama o comprovante em preto e branco para impressao termica."""
+    scale = width / 384
+    margin = max(12, round(24 * scale))
+    available = width - margin * 2
+    canvas = Image.new("RGB", (width, 1), "white")
+    measure = ImageDraw.Draw(canvas)
+    commands = []
+    y = round(24 * scale)
 
-    # Primeiro calcula a altura necessária com uma versão temporária do desenho.
-    temp = Image.new("RGB", (width, 2000), bg)
-    draw = ImageDraw.Draw(temp)
-    y = margin
-    for line in lines:
-        font = font_number if line == lines[9] else font_title if line in {"CUPOM DE TESTE", "SENHA DE ATENDIMENTO", "SENHA"} else font_label
-        wrapped = _wrap_for_width(draw, line, font, width - (margin * 2))
-        if not wrapped:
-            y += 10
-            continue
-        for part in wrapped:
-            bbox = draw.textbbox((0, 0), part, font=font)
-            line_height = bbox[3] - bbox[1]
-            y += line_height + 8
-    height = y + margin + 40
+    def space(value):
+        nonlocal y
+        y += round(value * scale)
 
-    image = Image.new("RGB", (width, height), bg)
+    def text(value, size, bold=False, gap=8, fit=False):
+        nonlocal y
+        font_size = max(10, round(size * scale))
+        font = _load_font(font_size, bold=bold)
+        if fit:
+            while measure.textbbox((0, 0), value, font=font)[2] > available and font_size > 10:
+                font_size -= 1
+                font = _load_font(font_size, bold=bold)
+        for part in _wrap_for_width(measure, value, font, available):
+            bbox = measure.textbbox((0, 0), part, font=font)
+            x = (width - (bbox[2] - bbox[0])) // 2 - bbox[0]
+            commands.append(("text", (x, y - bbox[1]), part, font))
+            y += bbox[3] - bbox[1] + round(gap * scale)
+
+    def rule():
+        nonlocal y
+        commands.append(("line", (margin, y, width - margin, y)))
+        y += max(1, round(scale))
+
+    text(lines[0], 26, bold=True)
+    text(lines[2], 15, gap=0)
+    space(18)
+    rule()
+    space(20)
+    text(lines[5], 24, bold=True)
+    text(lines[6], 14)
+    space(16)
+    text("SUA SENHA", 16)
+    text(lines[9], 112, bold=True, gap=0, fit=True)
+    space(28)
+    rule()
+    space(18)
+    text(lines[11].replace("DATA: ", "") + "  |  " + lines[12].replace("HORA: ", ""), 18)
+    space(14)
+    text(lines[14], 18, bold=True, gap=6)
+    space(12)
+    text("PROTOCOLO GERADO PELO SISTEMA", 11, gap=0)
+    space(24)
+
+    image = Image.new("RGB", (width, y), "white")
     draw = ImageDraw.Draw(image)
-    y = margin
-    for line in lines:
-        if line == "SENHA":
-            font = font_title
-        elif line == lines[9]:
-            font = font_number
-        elif line in {"CUPOM DE TESTE", "SENHA DE ATENDIMENTO"}:
-            font = font_title
+    for command in commands:
+        if command[0] == "text":
+            draw.text(command[1], command[2], font=command[3], fill="black")
         else:
-            font = font_label
-
-        wrapped = _wrap_for_width(draw, line, font, width - (margin * 2))
-        if not wrapped:
-            y += 10
-            continue
-        for part in wrapped:
-            bbox = draw.textbbox((0, 0), part, font=font)
-            line_width = bbox[2] - bbox[0]
-            line_height = bbox[3] - bbox[1]
-            x = max(int((width - line_width) / 2), margin)
-            draw.text((x, y), part, font=font, fill=fg)
-            y += line_height + 8
-
-    draw.rectangle((margin, 0, width - margin, 4), fill=fg)
-    draw.rectangle((margin, height - 6, width - margin, height - 2), fill=fg)
-    return image.convert("RGB")
+            draw.line(command[1], fill="black", width=max(1, round(scale)))
+    return image
 
 
 def _wrap_for_width(draw, text: str, font, max_width: int) -> list[str]:
