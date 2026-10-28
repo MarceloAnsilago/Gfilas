@@ -25,7 +25,7 @@ def _read_env_int(name: str, fallback: int) -> int:
 
 DEFAULT_UNIDADE = "UNIDADE"
 DEFAULT_USUARIO = "admin"
-DEFAULT_PLAYLIST_ID = "PLrBhE4oLMMj95y5nobzQgDT8ygY-Pqbk3"
+DEFAULT_PLAYLIST_ID = "PLCUb0x5mK4DM"
 FIELD_LABELS = {
     "senha_inicial": "senha inicial",
     "senha_final": "senha final",
