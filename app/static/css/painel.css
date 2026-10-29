@@ -84,6 +84,14 @@ h2 { margin: 0; font-size: 16px; }
 .history-card strong { display: block; font-size: 23px; line-height: 1.1; }
 .history-card p { margin: 3px 0 0; font-size: 12px; }
 .history-card time { display: block; text-align: right; color: #b6cee8; font-size: 10px; }
+.history-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.history-attendance { display: inline-block; font-size: 10px; font-weight: 600; line-height: 1.4; border-radius: 5px; padding: 1px 5px; }
+.history-attendance.present { color: #8cf0c4; background: #07b77926; }
+.history-attendance.absent { color: #ffb4b4; background: #ff666626; }
+.history-attendance.unknown { color: #d1e3f6; background: #ffffff15; }
+.history-card:has(.history-attendance.absent) { border-bottom-color: #ed7777; }
+@media (min-width: 1101px) { .display-shell:has(.history-list) { grid-template-rows: 98px minmax(0, 1fr) 132px 42px; } }
+@media (min-width: 901px) and (max-width: 1100px) { .display-shell:has(.history-list) { grid-template-rows: 85px minmax(0, 1fr) 132px 42px; } }
 .panel-footer { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 2px solid #00ba80; padding: 6px 12px; background: #021d39; font-size: 13px; }
 .panel-footer b { color: #07d57c; margin-right: 12px; font-size: 22px; }
 .panel-footer > span:last-child b { color: #ffbc28; }

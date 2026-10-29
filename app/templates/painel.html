@@ -97,7 +97,9 @@
         const hora  = it.hora ? it.hora.replace('T',' ').slice(0,19) : '';
         const unidade = it.unidade || 'UNIDADE';
         const term = (it.terminal ?? '-');
-        const pillClass = resp.includes('compareceu') ? 'ok' : (resp.includes('nao') ? 'no' : '');
+        const normalizedResponse = resp.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const absent = normalizedResponse.includes('nao compareceu');
+        const present = !absent && normalizedResponse === 'compareceu';
         const card = document.createElement('div');
         card.className = 'history-card';
         const number = document.createElement('strong');
@@ -110,7 +112,13 @@
         const ticketHeading = document.createElement('div');
         ticketHeading.className = 'ticket-heading';
         ticketHeading.append(priorityIcon(it.prioridade), number);
-        card.append(ticketHeading, destination, time);
+        const attendance = document.createElement('span');
+        attendance.className = `history-attendance ${absent ? 'absent' : present ? 'present' : 'unknown'}`;
+        attendance.textContent = absent ? 'Não compareceu' : present ? 'Compareceu' : 'Encerrado';
+        const footer = document.createElement('div');
+        footer.className = 'history-card-footer';
+        footer.append(attendance, time);
+        card.append(ticketHeading, destination, footer);
         lista.appendChild(card);
       });
       if(!dados.length){
