@@ -31,8 +31,8 @@
     </main>
     <aside class="sidebar">
       <section class="queue-panel">
-        <div class="section-heading"><h2><span aria-hidden="true">◷</span> PRÓXIMAS SENHAS</h2><span>FILA</span></div>
-        <div id="upcoming-list" class="upcoming-list"><p class="empty">Aguardando informações da fila…</p></div>
+        <div class="section-heading"><h2><span aria-hidden="true">◷</span> PRÓXIMAS SENHAS</h2><span id="queue-count">FILA</span></div>
+        <div id="upcoming-list" class="upcoming-list" role="list" aria-label="Próximas senhas na ordem de chamada"><p class="empty">Aguardando informações da fila…</p></div>
       </section>
       <section class="service-panel weather-panel" aria-label="Tempo em São Miguel do Guaporé">
         <h2><span aria-hidden="true">⌖</span> São Miguel do Guaporé – RO</h2>
@@ -124,17 +124,29 @@
     function renderUpcoming(items){
       const list = document.getElementById('upcoming-list');
       list.replaceChildren();
-      (items || []).slice(0, 5).forEach(item => {
+      const upcoming = (items || []).slice(0, 5);
+      document.getElementById('queue-count').textContent = upcoming.length ? `${upcoming.length} na lista` : 'FILA LIVRE';
+      upcoming.forEach((item, index) => {
         const row = document.createElement('div');
-        row.className = 'queue-row';
+        const preferred = (item.prioridade || '').trim().toLowerCase() === 'preferencial';
+        row.className = `queue-row${index === 0 ? ' queue-next' : ''}${preferred ? ' queue-preferred' : ''}`;
+        row.setAttribute('role', 'listitem');
         const ticket = document.createElement('strong');
+        ticket.className = 'queue-ticket';
         ticket.textContent = z3(item.senha);
+        const details = document.createElement('div');
+        details.className = 'queue-details';
         const unit = document.createElement('span');
+        unit.className = 'queue-unit';
         unit.textContent = item.unidade || 'Atendimento';
+        unit.title = unit.textContent;
+        const caption = document.createElement('small');
+        caption.textContent = `${preferred ? 'Preferencial' : 'Normal'}${index === 0 ? ' · Próxima chamada' : ''}`;
+        details.append(unit, caption);
         const priority = document.createElement('span');
         priority.className = 'priority';
         priority.appendChild(priorityIcon(item.prioridade));
-        row.append(ticket, unit, priority);
+        row.append(ticket, details, priority);
         list.appendChild(row);
       });
       if(!list.children.length){
