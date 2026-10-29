@@ -14,6 +14,7 @@ body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #020f2
 .video { width: 100%; height: 100%; min-height: 350px; background: radial-gradient(ellipse at 80% 45%, #bb885f70, transparent 50%), linear-gradient(150deg, #20496a, #0b2e49 65%, #386b65); }
 .video iframe, .video video { width: 100%; height: 100%; display: block; border: 0; object-fit: cover; }
 .call-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 25px; }
+.call-overlay[hidden] { display: none; }
 .current-call { width: min(75%, 620px); text-align: center; color: var(--navy); background: linear-gradient(135deg, #fffffff5, #edf6fff5); border: 1px solid #ffffffa8; border-radius: 26px; padding: clamp(18px, 2vw, 30px); box-shadow: 0 18px 50px #00163255; }
 .current-call h1 { margin: 0; display: flex; justify-content: center; align-items: center; gap: 20px; font-size: clamp(16px, 2vw, 28px); font-weight: 900; }
 .current-call h1 > span:first-child { color: #075bff; font-size: 38px; }
@@ -51,7 +52,6 @@ h2 { margin: 0; font-size: 16px; }
 .panel-footer { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 2px solid #00ba80; padding: 6px 12px; background: #021d39; font-size: 13px; }
 .panel-footer b { color: #07d57c; margin-right: 12px; font-size: 22px; }
 .panel-footer > span:last-child b { color: #ffbc28; }
-.modal-backdrop { display: none !important; }
 .current-call.is-calling { animation: call-pulse 1s ease-in-out 3; }
 @keyframes call-pulse { 50% { box-shadow: 0 0 0 8px #33b9ff80, 0 18px 50px #00163255; } }
 @media (prefers-reduced-motion: reduce) { .current-call.is-calling { animation: none; } }

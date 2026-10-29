@@ -19,7 +19,7 @@
     </section>
     <main class="stage">
       <div class="video">{{ video_embed|safe }}</div>
-      <div class="call-overlay">
+      <div id="backdrop" class="call-overlay" hidden>
         <section class="current-call" aria-live="polite" aria-atomic="true">
           <h1><span aria-hidden="true">◖))</span> <span id="call-title">AGUARDANDO CHAMADA</span></h1>
           <strong id="current-ticket" class="current-ticket">—</strong>
@@ -47,27 +47,18 @@
     </section>
     <footer class="panel-footer"><span><b aria-hidden="true">◖))</b> Retire sua senha e aguarde o atendimento.</span><span><b aria-hidden="true">⌖</b> ULSAV São Miguel do Guaporé – RO</span></footer>
   </div>
-  <div id="backdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="modal">
-      <div class="titulo">Senha chamada</div>
-      <div id="modal-senha" class="senha">000</div>
-      <div id="modal-meta" class="meta">UNIDADE - Terminal</div>
-      <div id="modal-atendente" class="meta atendente" style="display:none;">Atendimento</div>
-    </div>
-  </div>
   <script>
   (function(){
     const EVENTS_URL = "{{ url_for('web.painel_events') }}";
     const connectionStatus = document.getElementById('connection-status');
     const lista = document.getElementById('lista');
     const backdrop = document.getElementById('backdrop');
-    const elSenha = document.getElementById('modal-senha');
-    const elMeta  = document.getElementById('modal-meta');
-    const elAtendente = document.getElementById('modal-atendente');
     const btnTest = document.getElementById('btn-test');
     const btnReload = document.getElementById('btn-reload');
 
     let lastKey = null;
+    let modalTimer = null;
+    let voiceTimer = null;
     const beepEnabled = true;
     const voiceEnabled = true;
 
@@ -173,19 +164,11 @@
     }
 
     function showModal(senha, unidade, terminal, atendente, prioridade){
-      const senhaFormatada = z3(senha);
       const destinoTerminal = terminal ? `terminal ${terminal}` : 'terminal de atendimento';
-      const nomeAtendente = (atendente ?? '').trim();
-      elSenha.textContent = senhaFormatada;
-      elMeta.textContent  = `${unidade||'UNIDADE'} - Terminal ${terminal ?? '-'}`;
-      if(nomeAtendente){
-        elAtendente.textContent = `Atendimento: ${nomeAtendente}`;
-        elAtendente.style.display = '';
-      }else{
-        elAtendente.textContent = '';
-        elAtendente.style.display = 'none';
-      }
-      backdrop.style.display = 'flex';
+      clearTimeout(modalTimer);
+      clearTimeout(voiceTimer);
+      renderCurrent({senha, unidade, terminal, usuario: atendente});
+      backdrop.hidden = false;
       const call = document.querySelector('.current-call');
       call.classList.remove('is-calling');
       void call.offsetWidth;
@@ -193,8 +176,8 @@
       beep();
       const numeroFalado = parseInt(senha, 10) || 0;
       const tipoFalado = prioridadeFalado(prioridade);
-      setTimeout(()=>falar(`Senha ${tipoFalado} ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
-      setTimeout(()=>backdrop.style.display='none', 4500);
+      voiceTimer = setTimeout(()=>falar(`Senha ${tipoFalado} ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
+      modalTimer = setTimeout(()=>{ backdrop.hidden = true; }, 4500);
     }
 
     function atualizarPainel(status){
@@ -203,7 +186,6 @@
       renderCards(status.ultimas_senhas || []);
       renderUpcoming(status.proximas_senhas || []);
       const atual = status.senha_atual;
-      renderCurrent(atual);
       const respostaAtual = (atual?.resposta || '').toLowerCase();
       const deveAnunciar = respostaAtual.startsWith('chamando');
       const chave = atual
