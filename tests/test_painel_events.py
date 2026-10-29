@@ -41,7 +41,10 @@ class PainelEventsTests(unittest.TestCase):
                 for priority in ("normal", "preferencial"):
                     emitted = client.post(f"/senhas/imprimir/{priority}")
                     self.assertEqual(emitted.status_code, 200)
-                    next(stream)  # Emissao tambem notifica, mesmo sem mudar senha_atual.
+                    snapshot = payload(next(stream))
+                    self.assertTrue(snapshot["proximas_senhas"])
+                    self.assertEqual(snapshot["proximas_senhas"][0]["prioridade"],
+                                     "normal" if priority == "normal" else "preferencial")
                 fragment = client.get("/chamar?fragment=fila").get_data(as_text=True)
                 self.assertIn("2 aguardando", fragment)
                 self.assertIn('fila-totem-card normal', fragment)
@@ -50,7 +53,10 @@ class PainelEventsTests(unittest.TestCase):
                 self.assertNotIn('name="usuario"', fragment)
                 self.assertNotIn('window.location.reload()', fragment)
                 client.post("/chamar", data={"acao": "chamar", "usuario": "Operador", "terminal": "3"})
-                next(stream)
+                after_call = payload(next(stream))
+                self.assertEqual(len(after_call["proximas_senhas"]), 1)
+                self.assertNotEqual(after_call["proximas_senhas"][0]["senha"],
+                                    after_call["senha_atual"]["senha"])
                 fragment = client.get("/chamar?fragment=fila").get_data(as_text=True)
                 self.assertIn("1 aguardando", fragment)
             finally:

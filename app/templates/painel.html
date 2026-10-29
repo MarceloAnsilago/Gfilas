@@ -1,115 +1,53 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>Painel de Senhas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{
-      --bg:#ffffff; --fg:#0f172a; --muted:#475569; --line:#e5e7eb;
-      --card:#ffffff; --card2:#f8fafc; --shadow:0 20px 40px rgba(2,6,23,.12);
-    }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--fg); min-height:100vh; display:flex; flex-direction:column}
-    .top-row{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) 420px;
-      gap:20px;
-      align-items:stretch;
-      padding:20px 40px 0;
-    }
-    .hero-title{
-      font-size:42px;
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:1px;
-      color:#0f172a;
-      background:rgba(15,23,42,.08);
-      padding:16px 32px;
-      border-radius:24px;
-      box-shadow:0 12px 30px rgba(15,23,42,.1);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .side-card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:20px;
-      box-shadow:var(--shadow);
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      gap:4px;
-    }
-    .side-card h2{
-      margin:0;
-      font-size:20px;
-      text-transform:uppercase;
-      letter-spacing:.3px;
-    }
-    .side-card p{
-      margin:0;
-      color:#64748b;
-      font-size:14px;
-    }
-    .wrap{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:20px; align-items:start; padding:18px 40px 30px}
-    .video{position:relative; background:#000; border-radius:16px; overflow:hidden; box-shadow:var(--shadow); aspect-ratio:16/9; align-self:start; display:flex}
-    .video iframe,.video video{width:100%; height:100%; border:0; object-fit:cover}
-    .side{display:flex; flex-direction:column; gap:16px}
-    .list{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:var(--shadow); flex:1; overflow:auto}
-    .list::-webkit-scrollbar{width:10px}
-    .list::-webkit-scrollbar-thumb{background:#cbd5f5; border-radius:6px}
-    .card{background:var(--card2); border:1px solid var(--line); border-radius:18px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:16px; box-shadow:0 8px 20px rgba(15,23,42,.08)}
-    .card-icon{width:52px; height:52px; border-radius:16px; background:#e0f2fe; display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; box-shadow:0 10px 24px rgba(14,165,233,.15)}
-    .card-icon::before{content:""; width:10px; height:10px; background:#0369a1; border-radius:50%; display:block}
-    .card-body{flex:1; display:flex; flex-direction:column; gap:10px}
-    .card-top{display:flex; align-items:center; justify-content:space-between; gap:14px}
-    .senha-pill{font-size:26px; font-weight:900; letter-spacing:1px}
-    .status-pill{font-variant-numeric:tabular-nums; background:#e2e8f0; border-radius:999px; padding:6px 16px; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:.6px}
-    .status-pill.ok{background:#ecfdf5; color:#047857}
-    .status-pill.no{background:#fef2f2; color:#b91c1c}
-    .card-meta{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; color:var(--muted)}
-    .footer{display:flex; gap:10px}
-    .btn{appearance:none; border:1px solid var(--line); background:#fff; color:var(--fg); padding:10px 12px; border-radius:10px; cursor:pointer}
-    .btn:hover{background:#f8fafc}
-    .modal-backdrop{position:fixed; inset:0; background:rgba(15,23,42,.75); display:none; align-items:center; justify-content:center; z-index:10}
-    .modal{background:#fff; padding:80px 120px; border-radius:28px; text-align:center; box-shadow:0 28px 80px rgba(15,23,42,.5); min-width:720px; max-width:80vw}
-    .modal .titulo{font-size:28px; font-weight:800; letter-spacing:.5px; margin-bottom:12px}
-    .modal .senha{font-size:192px; font-weight:900; letter-spacing:8px; line-height:.95}
-    .modal .meta{font-size:32px; color:var(--muted); margin-top:20px}
-    .modal .meta.atendente{font-size:26px; margin-top:12px; opacity:.85}
-    @supports not (aspect-ratio: 16/9){
-      .video{padding-top:56.25%; display:block}
-      .video iframe,.video video{position:absolute; inset:0; width:100%; height:100%}
-    }
-    @media(max-width:1100px){
-      .top-banner{font-size:32px; padding:24px 16px 8px}
-      .wrap{grid-template-columns:1fr; grid-auto-rows:minmax(340px,auto); height:auto}
-      .video{min-height:320px}
-      .modal{padding:40px 20px; min-width:auto}
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/painel.css') }}">
 </head>
 <body>
-  <div class="top-row">
-    <div class="hero-title">Pegue sua senha</div>
-    <div class="side-card">
-      <h2>Senhas chamadas</h2>
-      <p id="connection-status" role="status" class="text-muted" style="margin:4px 0 0; color:#64748b;">Conectando ao painel...</p>
-    </div>
+  <div class="display-shell">
+    <header class="institution">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="" class="institution-logo">
+      <div><strong>IDARON</strong><span>ULSAV SÃO MIGUEL DO GUAPORÉ</span></div>
+      <div class="institution-motto">Agro forte,<br>Rondônia mais segura.</div>
+    </header>
+    <section class="clock-block" aria-label="Data e hora">
+      <time id="panel-clock">--:--</time>
+      <span id="panel-date"></span>
+    </section>
+    <main class="stage">
+      <div class="video">{{ video_embed|safe }}</div>
+      <div class="call-overlay">
+        <section class="current-call" aria-live="polite" aria-atomic="true">
+          <h1><span aria-hidden="true">◖))</span> <span id="call-title">AGUARDANDO CHAMADA</span></h1>
+          <strong id="current-ticket" class="current-ticket">—</strong>
+          <div class="counter-destination"><span class="person-icon" aria-hidden="true">●</span><span>GUICHÊ</span><strong id="current-counter">—</strong></div>
+          <p id="current-unit">Retire sua senha e aguarde o atendimento.</p>
+          <p id="current-attendant" hidden></p>
+        </section>
+      </div>
+    </main>
+    <aside class="sidebar">
+      <section class="queue-panel">
+        <div class="section-heading"><h2><span aria-hidden="true">◷</span> PRÓXIMAS SENHAS</h2><span>FILA</span></div>
+        <div id="upcoming-list" class="upcoming-list"><p class="empty">Aguardando informações da fila…</p></div>
+      </section>
+      <section class="service-panel">
+        <h2><span aria-hidden="true">⌖</span> São Miguel do Guaporé – RO</h2>
+        <div class="service-message"><span class="service-symbol" aria-hidden="true">✓</span><div><strong>Bem-vindo</strong><p>Atendimento ao público</p></div></div>
+        <p class="service-guidance">Acompanhe sua senha neste painel.<br>Ao ser chamado, dirija-se ao guichê indicado.</p>
+        <p id="connection-status" role="status">Conectando ao painel…</p>
+      </section>
+    </aside>
+    <section class="history">
+      <h2><span aria-hidden="true">◷</span> ÚLTIMAS SENHAS CHAMADAS</h2>
+      <div id="lista" class="history-list"></div>
+    </section>
+    <footer class="panel-footer"><span><b aria-hidden="true">◖))</b> Retire sua senha e aguarde o atendimento.</span><span><b aria-hidden="true">⌖</b> ULSAV São Miguel do Guaporé – RO</span></footer>
   </div>
-  <div class="wrap">
-    <div class="video">
-      {{ video_embed|safe }}
-    </div>
-    <div class="side">
-      <div id="lista" class="list"></div>
-    </div>
-  </div>
-
-  <div id="backdrop" class="modal-backdrop">
+  <div id="backdrop" class="modal-backdrop" aria-hidden="true">
     <div class="modal">
       <div class="titulo">Senha chamada</div>
       <div id="modal-senha" class="senha">000</div>
@@ -117,7 +55,6 @@
       <div id="modal-atendente" class="meta atendente" style="display:none;">Atendimento</div>
     </div>
   </div>
-
   <script>
   (function(){
     const EVENTS_URL = "{{ url_for('web.painel_events') }}";
@@ -139,7 +76,7 @@
     function renderCards(items){
       const dados = (items||[]).filter(it => (it.status||'').toLowerCase()==='encerrado');
       lista.innerHTML = '';
-      dados.forEach(it=>{
+      dados.slice(0, 5).forEach(it=>{
         const senha = z3(it.senha);
         const resp  = (it.resposta||'').toLowerCase();
         const hora  = it.hora ? it.hora.replace('T',' ').slice(0,19) : '';
@@ -147,22 +84,65 @@
         const term = (it.terminal ?? '-');
         const pillClass = resp.includes('compareceu') ? 'ok' : (resp.includes('nao') ? 'no' : '');
         const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="card-icon"></div>
-          <div class="card-body">
-            <div class="card-top">
-              <div class="senha-pill">${senha}</div>
-              <div class="status-pill ${pillClass}">${resp || '-'}</div>
-            </div>
-            <div class="card-meta">
-              <span>${unidade}</span>
-              <span>T${term} - ${hora}</span>
-            </div>
-          </div>
-        `;
+        card.className = 'history-card';
+        const number = document.createElement('strong');
+        number.textContent = senha;
+        const destination = document.createElement('p');
+        destination.textContent = `Guichê ${term}`;
+        const time = document.createElement('time');
+        time.textContent = hora.slice(11, 16);
+        card.title = `${unidade} — ${resp || 'Atendimento encerrado'}`;
+        card.append(number, destination, time);
         lista.appendChild(card);
       });
+      if(!dados.length){
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = 'Nenhuma chamada encerrada ainda.';
+        lista.appendChild(empty);
+      }
+    }
+
+    function renderUpcoming(items){
+      const list = document.getElementById('upcoming-list');
+      list.replaceChildren();
+      (items || []).slice(0, 5).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'queue-row';
+        const ticket = document.createElement('strong');
+        ticket.textContent = z3(item.senha);
+        const unit = document.createElement('span');
+        unit.textContent = item.unidade || 'Atendimento';
+        const priority = document.createElement('span');
+        priority.className = 'priority';
+        priority.textContent = item.prioridade === 'preferencial' ? 'Preferencial' : 'Normal';
+        row.append(ticket, unit, priority);
+        list.appendChild(row);
+      });
+      if(!list.children.length){
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = 'Nenhuma senha aguardando na fila.';
+        list.appendChild(empty);
+      }
+    }
+
+    function updateClock(){
+      const now = new Date();
+      document.getElementById('panel-clock').textContent = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+      document.getElementById('panel-date').textContent = now.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'});
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    function renderCurrent(item){
+      document.getElementById('current-ticket').textContent = item ? z3(item.senha) : '—';
+      document.getElementById('current-counter').textContent = item?.terminal ? String(item.terminal).padStart(2, '0') : '—';
+      document.getElementById('call-title').textContent = item ? 'SENHA CHAMADA' : 'AGUARDANDO CHAMADA';
+      document.getElementById('current-unit').textContent = item?.unidade || 'Retire sua senha e aguarde o atendimento.';
+      const attendant = document.getElementById('current-attendant');
+      attendant.hidden = !item?.usuario;
+      attendant.textContent = item?.usuario ? `Atendimento: ${item.usuario}` : '';
     }
 
     function beep(){
@@ -206,6 +186,10 @@
         elAtendente.style.display = 'none';
       }
       backdrop.style.display = 'flex';
+      const call = document.querySelector('.current-call');
+      call.classList.remove('is-calling');
+      void call.offsetWidth;
+      call.classList.add('is-calling');
       beep();
       const numeroFalado = parseInt(senha, 10) || 0;
       const tipoFalado = prioridadeFalado(prioridade);
@@ -217,7 +201,9 @@
       if(!status) return;
 
       renderCards(status.ultimas_senhas || []);
+      renderUpcoming(status.proximas_senhas || []);
       const atual = status.senha_atual;
+      renderCurrent(atual);
       const respostaAtual = (atual?.resposta || '').toLowerCase();
       const deveAnunciar = respostaAtual.startsWith('chamando');
       const chave = atual

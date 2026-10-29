@@ -255,7 +255,8 @@ def listar_ultimas_encerradas(limite: int = 8):
 
 
 def obter_painel_status_snapshot(limite: int = 8):
-    """Retorna senha atual e últimas encerradas usando uma única conexão."""
+    """Retorna chamada, histórico e próximas senhas da fila ativa."""
+    fila = obter_fila_ativa()
     with conectar() as conn:
         atual = conn.execute(
             """
@@ -277,11 +278,25 @@ def obter_painel_status_snapshot(limite: int = 8):
             (limite,),
         ).fetchall()
 
+        proximas = conn.execute(
+            """
+            SELECT senha, unidade, prioridade
+            FROM senha
+            WHERE status = 'aguardando'
+              AND COALESCE(data_execucao, substr(hora, 1, 10)) = ?
+              AND COALESCE(origem, 'lote') = ?
+            ORDER BY senha ASC
+            LIMIT 5
+            """,
+            (fila["data"], fila["origem"]),
+        ).fetchall() if fila else []
+
     atual_dict = dict(atual) if atual else None
     ultimas_dict = [dict(row) for row in ultimas]
     if not atual_dict and ultimas_dict:
         atual_dict = ultimas_dict[0]
-    return {"senha_atual": atual_dict, "ultimas_senhas": ultimas_dict}
+    return {"senha_atual": atual_dict, "ultimas_senhas": ultimas_dict,
+            "proximas_senhas": [dict(row) for row in proximas]}
 
 def listar_sessoes_por_data(origem: str | None = None):
     """Agrupa as senhas existentes por data."""
