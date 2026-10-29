@@ -335,25 +335,6 @@
     <h2>Chamar nova senha</h2>
   </section>
 
-  <form method="post" class="card chamar-form-card mb-4">
-    <div class="card-body">
-      <div class="chamar-form-grid">
-        <div>
-          <label class="chamar-label">Usuário</label>
-          <input type="text" name="usuario" class="form-control chamar-input" value="{{ usuario }}" placeholder="Nome do atendente">
-        </div>
-        <div>
-          <label class="chamar-label">Terminal</label>
-          <input type="text" name="terminal" class="form-control chamar-input" value="{{ terminal }}" placeholder="Ex: 1">
-        </div>
-        <div>
-          <label class="chamar-label text-center d-block">Ação principal</label>
-          <button type="submit" name="acao" value="chamar" class="btn btn-primary btn-destaque w-100">Chamar próximo</button>
-        </div>
-      </div>
-    </div>
-  </form>
-
   {% if chamada_aberta %}
     <div class="card atendimento-card mb-4">
       <div class="card-body">
@@ -409,6 +390,25 @@
   {% else %}
     <div class="alert alert-info">Nenhuma senha esta sendo atendida no momento.</div>
   {% endif %}
+
+  <form method="post" class="card chamar-form-card mb-4">
+    <div class="card-body">
+      <div class="chamar-form-grid">
+        <div>
+          <label class="chamar-label">Usuário</label>
+          <input type="text" name="usuario" class="form-control chamar-input" value="{{ usuario }}" placeholder="Nome do atendente">
+        </div>
+        <div>
+          <label class="chamar-label">Terminal</label>
+          <input type="text" name="terminal" class="form-control chamar-input" value="{{ terminal }}" placeholder="Ex: 1">
+        </div>
+        <div>
+          <label class="chamar-label text-center d-block">Ação principal</label>
+          <button type="submit" name="acao" value="chamar" class="btn btn-primary btn-destaque w-100">Chamar próximo</button>
+        </div>
+      </div>
+    </div>
+  </form>
 
   <section id="fila-live" aria-label="Fila de atendimento" aria-live="polite">
     {% include "_chamar_fila.html" %}
