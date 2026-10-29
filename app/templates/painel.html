@@ -64,6 +64,19 @@
 
     const z3 = (n)=> (n==null ? "000" : String(parseInt(n||0,10)).padStart(3,'0'));
 
+    function priorityIcon(priority){
+      const preferred = (priority || '').trim().toLowerCase() === 'preferencial';
+      const icon = document.createElement('span');
+      icon.className = `priority-icon ${preferred ? 'preferred' : 'normal'}`;
+      icon.setAttribute('role', 'img');
+      icon.setAttribute('aria-label', preferred ? 'Atendimento preferencial' : 'Atendimento normal');
+      icon.title = preferred ? 'Atendimento preferencial' : 'Atendimento normal';
+      icon.innerHTML = preferred
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2" fill="currentColor" stroke="none"/><path d="M12 7v7h6l3 6M12 10h5M8 11a6 6 0 1 0 8 8"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3Z"/></svg>';
+      return icon;
+    }
+
     function renderCards(items){
       const dados = (items||[]).filter(it => (it.status||'').toLowerCase()==='encerrado');
       lista.innerHTML = '';
@@ -83,7 +96,10 @@
         const time = document.createElement('time');
         time.textContent = hora.slice(11, 16);
         card.title = `${unidade} — ${resp || 'Atendimento encerrado'}`;
-        card.append(number, destination, time);
+        const ticketHeading = document.createElement('div');
+        ticketHeading.className = 'ticket-heading';
+        ticketHeading.append(priorityIcon(it.prioridade), number);
+        card.append(ticketHeading, destination, time);
         lista.appendChild(card);
       });
       if(!dados.length){
@@ -106,7 +122,7 @@
         unit.textContent = item.unidade || 'Atendimento';
         const priority = document.createElement('span');
         priority.className = 'priority';
-        priority.textContent = item.prioridade === 'preferencial' ? 'Preferencial' : 'Normal';
+        priority.appendChild(priorityIcon(item.prioridade));
         row.append(ticket, unit, priority);
         list.appendChild(row);
       });

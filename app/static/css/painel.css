@@ -33,6 +33,13 @@ h2 { margin: 0; font-size: 16px; }
 .queue-row strong { font-size: 24px; font-weight: 900; }
 .queue-row span { font-size: 12px; }
 .queue-row .priority { color: #078b50; font-size: 10px; font-weight: 700; }
+.priority-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; }
+.priority-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.priority-icon.normal { color: #2dafff; background: #2dafff1a; }
+.priority-icon.preferred { color: #ffb62d; background: #ffb62d1a; }
+.queue-row .priority-icon.normal { color: #087ac1; }
+.queue-row .priority-icon.preferred { color: #a96600; }
+.ticket-heading { display: flex; align-items: center; gap: 7px; }
 .empty { padding: 20px 10px; font-size: 14px; line-height: 1.5; opacity: .8; }
 .service-panel { padding: 16px; background: linear-gradient(145deg, #12345cdd, #076b9d80); border: 1px solid #7badd977; border-radius: 17px; }
 .service-panel h2 { font-size: 14px; font-weight: 500; }
