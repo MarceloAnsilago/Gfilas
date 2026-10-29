@@ -34,10 +34,20 @@
         <div class="section-heading"><h2><span aria-hidden="true">◷</span> PRÓXIMAS SENHAS</h2><span>FILA</span></div>
         <div id="upcoming-list" class="upcoming-list"><p class="empty">Aguardando informações da fila…</p></div>
       </section>
-      <section class="service-panel">
+      <section class="service-panel weather-panel" aria-label="Tempo em São Miguel do Guaporé">
         <h2><span aria-hidden="true">⌖</span> São Miguel do Guaporé – RO</h2>
-        <div class="service-message"><span class="service-symbol" aria-hidden="true">✓</span><div><strong>Bem-vindo</strong><p>Atendimento ao público</p></div></div>
-        <p class="service-guidance">Acompanhe sua senha neste painel.<br>Ao ser chamado, dirija-se ao guichê indicado.</p>
+        <div class="weather-grid" aria-live="polite">
+          <div class="weather-main">
+            <div class="weather-current"><span id="weather-icon" aria-hidden="true">☁️</span><strong id="weather-temperature">--°</strong></div>
+            <p id="weather-description">Consultando o tempo…</p>
+          </div>
+          <div class="weather-details">
+            <div><svg class="weather-thermometer hot" viewBox="0 0 20 32" aria-hidden="true"><path d="M6 19V6a4 4 0 0 1 8 0v13a7 7 0 1 1-8 0Z"/><path class="mercury" d="M10 8v16"/><circle cx="10" cy="25" r="3"/></svg><p><strong id="weather-max">--°</strong><small>Máxima</small></p></div>
+            <div><svg class="weather-thermometer cold" viewBox="0 0 20 32" aria-hidden="true"><path d="M6 19V6a4 4 0 0 1 8 0v13a7 7 0 1 1-8 0Z"/><path class="mercury" d="M10 16v8"/><circle cx="10" cy="25" r="3"/></svg><p><strong id="weather-min">--°</strong><small>Mínima</small></p></div>
+            <div><span class="weather-wind" aria-hidden="true">≋</span><p><strong id="weather-wind">-- km/h</strong><small id="weather-direction">Vento</small></p></div>
+          </div>
+        </div>
+        <div class="weather-source"><span id="weather-update" role="status">Atualização a cada 30 min</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></div>
         <p id="connection-status" role="status">Conectando ao painel…</p>
       </section>
     </aside>
@@ -47,6 +57,7 @@
     </section>
     <footer class="panel-footer"><span><b aria-hidden="true">◖))</b> Retire sua senha e aguarde o atendimento.</span><span><b aria-hidden="true">⌖</b> ULSAV São Miguel do Guaporé – RO</span></footer>
   </div>
+  <script src="{{ url_for('static', filename='js/painel-weather.js') }}" defer></script>
   <script>
   (function(){
     const EVENTS_URL = "{{ url_for('web.painel_events') }}";

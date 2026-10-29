@@ -48,6 +48,25 @@ h2 { margin: 0; font-size: 16px; }
 .service-message strong { font-size: 28px; }
 .service-message p { margin: 4px 0; font-size: 13px; color: #bcdcf8; }
 .service-guidance { font-size: 13px; line-height: 1.6; color: #d6e7f9; }
+.weather-panel { background: radial-gradient(ellipse at 90% 15%, #d9f2ff35, transparent 45%), radial-gradient(ellipse at 15% 100%, #b0d6f644, transparent 40%), linear-gradient(135deg, #06264b, #086a9c); }
+.weather-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin-top: 18px; align-items: center; }
+.weather-current { display: flex; align-items: center; gap: 5px; }
+#weather-icon { font-size: clamp(36px, 4vw, 60px); line-height: 1; }
+#weather-temperature { font-size: clamp(38px, 4.2vw, 64px); line-height: 1.1; letter-spacing: -2px; }
+#weather-description { font-size: 13px; margin: 12px 0 0; }
+.weather-details { border-left: 1px solid #b5dcff60; padding-left: 10px; display: grid; gap: 9px; }
+.weather-details > div { display: flex; align-items: center; gap: 7px; }
+.weather-details p { margin: 0; }
+.weather-details strong { display: block; font-size: 14px; }
+.weather-details small { display: block; font-size: 10px; color: #cce6ff; }
+.weather-thermometer { width: 18px; height: 29px; fill: none; stroke: #dbedff; stroke-width: 2; flex-shrink: 0; }
+.weather-thermometer .mercury { stroke: currentColor; stroke-width: 3; }
+.weather-thermometer circle { fill: currentColor; stroke: none; }
+.weather-thermometer.hot { color: #ff6c6c; }
+.weather-thermometer.cold, .weather-wind { color: #45c8ff; }
+.weather-wind { font-size: 30px; line-height: 1; }
+.weather-source { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; margin-top: 14px; font-size: 9px; color: #d5eaff; }
+.weather-source a { color: #d5eaff; }
 #connection-status { border-top: 1px solid #ffffff25; padding-top: 10px; margin-bottom: 0; font-size: 11px; color: #9de8cc; }
 .history { min-width: 0; padding: 8px 0; }
 .history h2 { font-size: 12px; font-weight: 500; margin: 0 0 7px 5px; }
