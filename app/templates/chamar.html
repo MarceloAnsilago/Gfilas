@@ -156,10 +156,6 @@
     margin: 0;
   }
 
-  .acao-chamar-novamente {
-    grid-column: span 2;
-  }
-
   .btn-acao {
     width: 100%;
     min-height: 0;
@@ -369,6 +365,11 @@
       </div>
       <div class="card-footer bg-light border-0 pt-0 px-4 pb-4">
         <div class="atendimento-acoes">
+          <form method="post">
+            <input type="hidden" name="usuario" value="{{ usuario }}">
+            <input type="hidden" name="terminal" value="{{ terminal }}">
+            <button type="submit" name="acao" value="cancelar_chamada" class="btn btn-outline-danger btn-acao">Cancelar chamada</button>
+          </form>
           <form method="post" class="acao-chamar-novamente">
             <input type="hidden" name="usuario" value="{{ usuario }}">
             <input type="hidden" name="terminal" value="{{ terminal }}">

@@ -96,7 +96,14 @@ def chamar():
             flash("Nenhuma senha esta em atendimento no momento.", "info")
             return redirect(url_for("web.chamar"))
 
-        if acao == "chamar_novamente":
+        if acao == "cancelar_chamada":
+            db.atualizar_senha(
+                chamada_atual["id"],
+                {"status": "aguardando", "resposta": "", "usuario": "", "terminal": 0},
+            )
+            _notify_painel()
+            flash(f"Chamada cancelada. Senha {int(chamada_atual['senha']):03} devolvida à fila.", "success")
+        elif acao == "chamar_novamente":
             atual = (chamada_atual.get("resposta") or "chamando 1").split()
             try:
                 numero_atual = int(atual[-1])

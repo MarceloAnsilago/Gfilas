@@ -20,6 +20,47 @@ def payload(chunk):
 
 
 class PainelEventsTests(unittest.TestCase):
+    def test_cancel_call_returns_ticket_to_queue_and_allows_calling_again(self):
+        with TemporaryDirectory() as directory:
+            templates = Path(__file__).resolve().parents[1] / "app" / "templates"
+            app = Flask(__name__, template_folder=str(templates))
+            app.config.update(TESTING=True, SECRET_KEY="test", DB_PATH=str(Path(directory) / "test.db"))
+            app.extensions["painel_events"] = PainelEvents()
+            app.register_blueprint(bp)
+            with app.app_context():
+                db.init_db()
+                ticket_id = db.inserir_senha(1, "Unidade", prioridade="preferencial")
+                db.inserir_senha(2, "Unidade")
+            client = app.test_client()
+            call = {"acao": "chamar", "usuario": "Operador", "terminal": "3"}
+            client.post("/chamar", data=call)
+            page = client.get("/chamar").get_data(as_text=True)
+            self.assertLess(page.index('value="cancelar_chamada"'), page.index('value="chamar_novamente"'))
+            response = client.get("/painel/events", buffered=False)
+            stream = iter(response.response)
+            next(stream)
+            try:
+                result = client.post("/chamar", data={**call, "acao": "cancelar_chamada"})
+                self.assertEqual(result.status_code, 302)
+                snapshot = payload(next(stream))
+                self.assertIsNone(snapshot["senha_atual"])
+                self.assertEqual(snapshot["ultimas_senhas"], [])
+                self.assertEqual([item["senha"] for item in snapshot["proximas_senhas"]], [1, 2])
+                with app.app_context():
+                    ticket = db.obter_senha_por_id(ticket_id)
+                    self.assertIsNone(db.obter_chamada_aberta())
+                    self.assertEqual(ticket["status"], "aguardando")
+                    self.assertEqual(ticket["resposta"], "")
+                    self.assertEqual(ticket["terminal"], 0)
+                    self.assertEqual(ticket["prioridade"], "preferencial")
+                    self.assertEqual(db.proxima_senha_aguardando()["id"], ticket_id)
+                client.post("/chamar", data=call)
+                called = payload(next(stream))["senha_atual"]
+                self.assertEqual(called["id"], ticket_id)
+                self.assertEqual(called["resposta"], "chamando 1")
+            finally:
+                response.close()
+
     def test_queue_fragment_tracks_totem_emissions_and_calls(self):
         with TemporaryDirectory() as directory, patch.dict(os.environ, {"THERMAL_PRINTER_MODE": "queue"}):
             templates = Path(__file__).resolve().parents[1] / "app" / "templates"
