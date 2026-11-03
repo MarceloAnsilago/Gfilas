@@ -58,6 +58,7 @@
     <footer class="panel-footer"><span><b aria-hidden="true">◖))</b> Retire sua senha e aguarde o atendimento.</span><span><b aria-hidden="true">⌖</b> ULSAV São Miguel do Guaporé – RO</span></footer>
   </div>
   <script src="{{ url_for('static', filename='js/painel-weather.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/painel-audio.js') }}"></script>
   <script>
   (function(){
     const EVENTS_URL = "{{ url_for('web.painel_events') }}";
@@ -70,6 +71,8 @@
     let lastKey = null;
     let modalTimer = null;
     let voiceTimer = null;
+    let audioTimer = null;
+    let announcement = 0;
     const beepEnabled = true;
     const voiceEnabled = true;
 
@@ -190,20 +193,27 @@
         const o = ctx.createOscillator(); const g = ctx.createGain();
         o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
         g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.02);
         o.start();
         setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25); o.stop(ctx.currentTime + 0.28); ctx.close(); }, 260);
       }catch(e){ console.error(e); }
     }
 
-    function falar(texto){
-      if(!voiceEnabled) return;
+    function finishAnnouncement(id){
+      if(id !== announcement) return;
+      clearTimeout(audioTimer);
+      window.painelMedia.restore();
+    }
+
+    function falar(texto, id){
+      if(!voiceEnabled){ finishAnnouncement(id); return; }
       try{
         const u = new SpeechSynthesisUtterance(texto);
-        u.lang='pt-BR'; u.rate=1; u.pitch=1;
+        u.lang='pt-BR'; u.rate=1; u.pitch=1; u.volume=1;
+        u.onend = u.onerror = ()=>finishAnnouncement(id);
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(u);
-      }catch(e){ console.error(e); }
+      }catch(e){ console.error(e); finishAnnouncement(id); }
     }
 
     function prioridadeFalado(prioridade){
@@ -214,6 +224,12 @@
       const destinoTerminal = terminal ? `terminal ${terminal}` : 'terminal de atendimento';
       clearTimeout(modalTimer);
       clearTimeout(voiceTimer);
+      clearTimeout(audioTimer);
+      const id = ++announcement;
+      window.speechSynthesis?.cancel();
+      window.painelMedia.lower();
+      // Restore even when a browser fails to deliver speech completion events.
+      audioTimer = setTimeout(()=>finishAnnouncement(id), 30000);
       renderCurrent({senha, unidade, terminal, usuario: atendente});
       backdrop.hidden = false;
       const call = document.querySelector('.current-call');
@@ -223,7 +239,7 @@
       beep();
       const numeroFalado = parseInt(senha, 10) || 0;
       const tipoFalado = prioridadeFalado(prioridade);
-      voiceTimer = setTimeout(()=>falar(`Senha ${tipoFalado} ${numeroFalado}, dirija-se ao ${destinoTerminal}`), 350);
+      voiceTimer = setTimeout(()=>falar(`Senha ${tipoFalado} ${numeroFalado}, dirija-se ao ${destinoTerminal}`, id), 350);
       modalTimer = setTimeout(()=>{ backdrop.hidden = true; }, 4500);
     }
 
@@ -283,6 +299,13 @@
       if(!document.hidden){ desconectar(); iniciar(); }
     });
     window.addEventListener('pagehide', desconectar);
+    window.addEventListener('pagehide', ()=>{
+      ++announcement;
+      clearTimeout(voiceTimer);
+      clearTimeout(audioTimer);
+      window.speechSynthesis?.cancel();
+      window.painelMedia.restore();
+    });
     window.addEventListener('pageshow', iniciar);
 
     iniciar();
