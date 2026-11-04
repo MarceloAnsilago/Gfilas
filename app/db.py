@@ -103,6 +103,32 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_print_job_status_id ON print_job(status, id)")
         conn.commit()
 
+def obter_unidade_padrao() -> str:
+    """Retorna o nome salvo da unidade ou o padrao da instalacao."""
+    with conectar() as conn:
+        row = conn.execute(
+            "SELECT valor FROM configuracao WHERE chave = 'unidade_padrao'"
+        ).fetchone()
+    if row and row["valor"] and row["valor"].strip():
+        return row["valor"].strip()
+    valor = (app.config.get("DEFAULT_UNIDADE") or "").strip()
+    return valor if valor and valor.upper() != "UNIDADE" else "ULSAV SMG"
+
+
+def salvar_unidade_padrao(unidade: str) -> None:
+    unidade = unidade.strip()
+    if not unidade:
+        raise ValueError("Informe o nome da unidade.")
+    with conectar() as conn:
+        conn.execute(
+            """
+            INSERT INTO configuracao (chave, valor) VALUES ('unidade_padrao', ?)
+            ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor
+            """,
+            (unidade,),
+        )
+
+
 def senha_existe(senha_valor: int, data_iso: str | None = None) -> bool:
     """Verifica se uma senha j� existe na data selecionada (se fornecida)."""
     sql = "SELECT 1 FROM senha WHERE senha = ?"

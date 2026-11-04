@@ -20,7 +20,7 @@ class Config:
         DB_PATH = str((BASE_DIR / ENV_DB).resolve())
 
     # Configurações opcionais / defaults
-    DEFAULT_UNIDADE = os.getenv("PAINEL_UNIDADE_PADRAO", "UNIDADE")
+    DEFAULT_UNIDADE = os.getenv("PAINEL_UNIDADE_PADRAO", "ULSAV SMG")
     DEFAULT_USUARIO = os.getenv("PAINEL_USUARIO_PADRAO", "admin")
 
     # Fuso horário padrão

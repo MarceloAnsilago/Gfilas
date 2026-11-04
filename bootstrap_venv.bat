@@ -40,7 +40,7 @@ if not exist ".env" (
   if not exist ".env" (
     echo SECRET_KEY=troque-esta-chave> .env
     echo PAINEL_DB_PATH=%cd%\ultima_senha.db>> .env
-    echo PAINEL_UNIDADE_PADRAO=UNIDADE>> .env
+    echo PAINEL_UNIDADE_PADRAO=ULSAV SMG>> .env
     echo PAINEL_USUARIO_PADRAO=admin>> .env
   )
 )

@@ -23,7 +23,7 @@ def _read_env_int(name: str, fallback: int) -> int:
         return fallback
 
 
-DEFAULT_UNIDADE = "UNIDADE"
+DEFAULT_UNIDADE = "ULSAV SMG"
 DEFAULT_USUARIO = "admin"
 DEFAULT_PLAYLIST_ID = "PLCUb0x5mK4DM"
 FIELD_LABELS = {
@@ -156,7 +156,7 @@ def chamar():
 @bp.route("/gerar", methods=["GET", "POST"])
 def gerar_senhas():
     if request.method == "POST":
-        unidade = request.form.get("unidade", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
+        unidade = (request.form.get("unidade") or "").strip() or db.obter_unidade_padrao()
         try:
             senha_inicial = _parse_int_from_form(request.form, "senha_inicial", 1)
             senha_final = _parse_int_from_form(request.form, "senha_final", 50)
@@ -231,6 +231,7 @@ def gerar_senhas():
         )
     return render_template(
         "gerar.html",
+        unidade_padrao=db.obter_unidade_padrao(),
         total_senhas=total_senhas,
         data_padrao=data_padrao,
         sessoes=sessoes,
@@ -240,6 +241,17 @@ def gerar_senhas():
         remanescentes_normal=remanescentes_normal,
         remanescentes_preferencial=remanescentes_preferencial,
     )
+
+
+@bp.route("/gerar/salvar-unidade", methods=["POST"])
+def salvar_unidade():
+    unidade = (request.form.get("unidade") or "").strip()
+    if not unidade:
+        flash("Informe o nome da unidade.", "warning")
+    else:
+        db.salvar_unidade_padrao(unidade)
+        flash("Nome da unidade salvo com sucesso.", "success")
+    return redirect(url_for("web.gerar_senhas"))
 
 
 @bp.route("/gerar/definir-producao", methods=["POST"])
@@ -663,7 +675,7 @@ def _emitir_e_imprimir_senha(prioridade: str):
     if prioridade not in PRIORIDADE_LABELS:
         return jsonify({"ok": False, "message": "Tipo de senha invalido."}), 400
 
-    unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
+    unidade = db.obter_unidade_padrao()
     data_execucao = date.today().isoformat()
     try:
         numero_int = db.proximo_numero_totem(prioridade)
@@ -732,7 +744,7 @@ def _emitir_e_imprimir_senha(prioridade: str):
 
 
 def _imprimir_teste():
-    unidade = os.getenv("PAINEL_UNIDADE_PADRAO", DEFAULT_UNIDADE).strip() or DEFAULT_UNIDADE
+    unidade = db.obter_unidade_padrao()
     agora = datetime.now(db.FUSO_HORARIO)
     modo_impressao = printer.printer_mode()
     try:
