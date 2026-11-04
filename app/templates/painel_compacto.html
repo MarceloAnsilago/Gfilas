@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Painel compacto{% endblock %}
+{% block extra_css %}
+<style>
+  .layout-main { min-width: 0; }
+  .monitor-current { background: #0b1220; color: white; border-radius: 16px; padding: 24px; }
+  .monitor-ticket { font-size: clamp(3.5rem, 8vw, 6rem); line-height: 1.1; font-weight: 700; }
+  .monitor-counter { font-size: 2rem; font-weight: 700; }
+  .monitor-list { display: grid; gap: 10px; }
+  .monitor-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; overflow-wrap: anywhere; }
+  .monitor-item strong { font-size: 1.5rem; }
+  .monitor-history { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Painel compacto</h1>
+    <p class="text-muted mb-0">Acompanhe as chamadas em tempo real, sem áudio.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{{ url_for('web.painel') }}" target="_blank" rel="noopener">Abrir painel externo</a>
+</div>
+<p id="monitor-connection" class="small text-muted" role="status">Conectando ao painel…</p>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="monitor-current h-100" aria-live="polite" aria-atomic="true">
+      <h2 class="h6 text-uppercase" id="monitor-title">Aguardando chamada</h2>
+      <div id="monitor-ticket" class="monitor-ticket">—</div>
+      <p id="monitor-priority" class="mt-2 mb-2"></p>
+      <div class="monitor-counter">Guichê <span id="monitor-counter">—</span></div>
+      <p id="monitor-attendant" class="mt-2 mb-1"></p>
+      <p id="monitor-unit" class="mb-0"></p>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Próximas senhas</h2>
+        <div id="monitor-upcoming" class="monitor-list"><p class="text-muted mb-0">Aguardando informações da fila…</p></div>
+      </div>
+    </section>
+  </div>
+</div>
+<section class="card shadow-sm mt-3">
+  <div class="card-body">
+    <h2 class="h5">Últimas chamadas</h2>
+    <div id="monitor-history" class="monitor-list monitor-history"></div>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='js/painel-compacto.js') }}" data-events-url="{{ url_for('web.painel_events') }}" defer></script>
+{% endblock %}

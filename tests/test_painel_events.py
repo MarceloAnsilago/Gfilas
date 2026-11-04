@@ -20,6 +20,25 @@ def payload(chunk):
 
 
 class PainelEventsTests(unittest.TestCase):
+    def test_compact_panel_keeps_sidebar_and_uses_shared_events(self):
+        templates = Path(__file__).resolve().parents[1] / "app" / "templates"
+        app = Flask(__name__, template_folder=str(templates))
+        app.config.update(TESTING=True, SECRET_KEY="test")
+        app.register_blueprint(bp)
+        client = app.test_client()
+        response = client.get("/painel/compacto")
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="sidebar"', page)
+        self.assertIn('data-events-url="/painel/events"', page)
+        self.assertIn('id="monitor-upcoming"', page)
+        self.assertIn('id="monitor-history"', page)
+        self.assertIn('nav-link active', page)
+        self.assertNotIn('painel-audio.js', page)
+        external = client.get("/painel").get_data(as_text=True)
+        self.assertNotIn('id="sidebar"', external)
+        self.assertIn('painel-audio.js', external)
+
     def test_cancel_call_returns_ticket_to_queue_and_allows_calling_again(self):
         with TemporaryDirectory() as directory:
             templates = Path(__file__).resolve().parents[1] / "app" / "templates"

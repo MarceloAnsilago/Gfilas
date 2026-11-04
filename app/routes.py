@@ -513,6 +513,11 @@ def historico():
     )
 
 
+@bp.route("/painel/compacto")
+def painel_compacto():
+    return render_template("painel_compacto.html")
+
+
 @bp.route("/painel")
 def painel():
     return render_template("painel.html", video_embed=_montar_video_embed())

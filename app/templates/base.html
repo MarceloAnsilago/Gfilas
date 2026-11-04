@@ -151,6 +151,12 @@
             <span class="label">Historico</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'web.painel_compacto' %}active{% endif %}" href="{{ url_for('web.painel_compacto') }}" title="Painel compacto">
+            <i class="bx bx-desktop"></i>
+            <span class="label">Painel compacto</span>
+          </a>
+        </li>
       </ul>
     </nav>
     <main class="layout-main p-4 flex-grow-1" style="margin-left: 230px;">
