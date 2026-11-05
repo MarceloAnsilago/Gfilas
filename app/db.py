@@ -272,7 +272,7 @@ def listar_ultimas_encerradas(limite: int = 8):
             SELECT *
             FROM senha
             WHERE status = 'encerrado'
-            ORDER BY atualizado_em DESC, id DESC
+            ORDER BY julianday(hora) DESC, hora DESC, id DESC
             LIMIT ?
             """,
             (limite,),
@@ -289,7 +289,7 @@ def obter_painel_status_snapshot(limite: int = 8):
             SELECT *
             FROM senha
             WHERE status = 'aberto'
-            ORDER BY atualizado_em DESC, id DESC
+            ORDER BY julianday(hora) DESC, hora DESC, id DESC
             LIMIT 1
             """
         ).fetchone()
@@ -298,7 +298,7 @@ def obter_painel_status_snapshot(limite: int = 8):
             SELECT *
             FROM senha
             WHERE status = 'encerrado'
-            ORDER BY atualizado_em DESC, id DESC
+            ORDER BY julianday(hora) DESC, hora DESC, id DESC
             LIMIT ?
             """,
             (limite,),
@@ -845,6 +845,7 @@ def atualizar_senha(identificador: int, campos: dict):
     """Atualiza campos arbitrarios de uma senha."""
     if not campos:
         return
+    campos = {**campos, "atualizado_em": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f")}
     colunas = ", ".join(f"{k} = ?" for k in campos.keys())
     valores = list(campos.values())
     valores.append(identificador)

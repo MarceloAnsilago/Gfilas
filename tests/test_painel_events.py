@@ -20,6 +20,33 @@ def payload(chunk):
 
 
 class PainelEventsTests(unittest.TestCase):
+    def test_latest_call_uses_service_time_instead_of_emission_order(self):
+        with TemporaryDirectory() as directory:
+            app = Flask(__name__)
+            app.config["DB_PATH"] = str(Path(directory) / "test.db")
+            with app.app_context():
+                db.init_db()
+                normal = db.inserir_senha(145, "Unidade")
+                preferential = db.inserir_senha(16, "Unidade", prioridade="preferencial")
+                # Reproduce existing records: creation order differs from call order.
+                with db.conectar() as conn:
+                    for ticket_id, called_at, created_at in (
+                        (preferential, "2026-11-05T10:00:00-04:00", "2026-11-05 13:00:00"),
+                        (normal, "2026-11-05T10:05:00-04:00", "2026-11-05 12:00:00"),
+                    ):
+                        conn.execute(
+                            "UPDATE senha SET status = 'encerrado', hora = ?, atualizado_em = ? WHERE id = ?",
+                            (called_at, created_at, ticket_id),
+                        )
+                snapshot = db.obter_painel_status_snapshot()
+                self.assertEqual(snapshot["senha_atual"]["id"], normal)
+                self.assertEqual([row["id"] for row in snapshot["ultimas_senhas"]], [normal, preferential])
+                self.assertEqual(db.listar_ultimas_encerradas()[0]["id"], normal)
+                before = db.obter_senha_por_id(preferential)["atualizado_em"]
+                db.atualizar_senha(preferential, {"status": "aberto", "hora": "2026-11-05T10:06:00-04:00"})
+                self.assertNotEqual(db.obter_senha_por_id(preferential)["atualizado_em"], before)
+                self.assertEqual(db.obter_painel_status_snapshot()["senha_atual"]["id"], preferential)
+
     def test_compact_panel_keeps_sidebar_and_uses_shared_events(self):
         templates = Path(__file__).resolve().parents[1] / "app" / "templates"
         app = Flask(__name__, template_folder=str(templates))
