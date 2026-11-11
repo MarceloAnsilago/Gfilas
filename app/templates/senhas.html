@@ -63,6 +63,8 @@
     @keyframes print-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { .print-spinner { animation: none; } }
     .thanks { text-align: center; font-size: .8rem; color: var(--muted); }
+    .wake-lock-notice { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.5; text-align: center; }
+    .wake-lock-notice button { color: inherit; background: transparent; border: 1px solid #64748b; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
     @media (max-width: 600px) {
       body { padding: 12px; }
       .screen { border-radius: 22px; }
@@ -243,6 +245,11 @@
         {% endif %}
       </div>
 
+      <p class="wake-lock-notice" id="wake-lock-notice" role="status" hidden>
+        <span id="wake-lock-message"></span>
+        <button type="button" id="wake-lock-activate" hidden>Manter tela ativa</button>
+      </p>
+
       <div class="quick-actions">
         <button type="button" id="btn-print-test" data-print-url="{{ url_for('web.imprimir_teste') }}">
           Imprimir teste
@@ -259,6 +266,7 @@
       <p>Aguarde um instante.<br>Não é necessário tocar novamente.</p>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/senhas-wake-lock.js') }}" defer></script>
   <script>
     (function () {
       const root = document.documentElement;

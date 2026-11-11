@@ -40,6 +40,21 @@ class UnidadeTests(unittest.TestCase):
             self.assertEqual([row["unidade"] for row in jobs], ["ULSAV SMG", "Nova Unidade", "Nova Unidade"])
             self.assertEqual(conn.execute("SELECT unidade FROM senha").fetchone()["unidade"], "Nova Unidade")
 
+    def test_wake_lock_is_loaded_only_on_ticket_emission_page(self):
+        with patch("app.routes.printer.printer_ready", return_value=(True, "Pronta")):
+            response = self.client.get("/senhas")
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('src="/static/js/senhas-wake-lock.js" defer', page)
+        self.assertIn('id="wake-lock-notice" role="status" hidden', page)
+        self.assertIn('data-print-url="/senhas/imprimir/normal"', page)
+        self.assertIn('data-print-url="/senhas/imprimir/preferencial"', page)
+        for route in ("/", "/gerar", "/painel", "/chamar"):
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn("senhas-wake-lock.js", response.get_data(as_text=True))
+
     def test_blank_save_keeps_name_and_batch_uses_saved_default(self):
         self.client.post("/gerar/salvar-unidade", data={"unidade": "Unidade Salva"})
         self.client.post("/gerar/salvar-unidade", data={"unidade": "   "})
