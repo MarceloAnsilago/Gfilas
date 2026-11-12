@@ -72,7 +72,7 @@ def private_response(response):
 
 
 def require_unit():
-    if request.endpoint in {"auth.login", "static"} or request.endpoint is None:
+    if request.endpoint in {"auth.login", "auth.admin_login", "static"} or request.endpoint is None:
         return None
     if request.path.startswith("/print-agent/"):
         token = (request.headers.get("X-Print-Agent-Token") or "").strip()
@@ -91,10 +91,12 @@ def require_unit():
         session.clear()
         if request.path.endswith(("/status", "/events")) or request.method != "GET":
             return jsonify(ok=False, message="Entre com o login da unidade."), 401
-        return redirect(url_for("auth.login", next=request.full_path))
+        return redirect(url_for("auth.admin_login") if request.endpoint == "web.admin" else url_for("auth.login", next=request.full_path))
     select_unit(unit)
     if request.endpoint == "web.admin" and not unit["is_admin"]:
-        return "Acesso exclusivo do administrador.", 403
+        return redirect(url_for("auth.admin_login"))
+    if unit["is_admin"] and request.endpoint not in {"web.admin", "auth.logout"}:
+        return redirect(url_for("web.admin"))
 
 
 def form_token():
@@ -109,6 +111,15 @@ def valid_form():
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    return login_page(admin_only=False)
+
+
+@bp.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    return login_page(admin_only=True)
+
+
+def login_page(admin_only):
     if request.method == "POST":
         if not valid_form():
             flash("Atualize a pagina e tente novamente.", "warning")
@@ -116,16 +127,18 @@ def login():
             username = (request.form.get("login") or "").strip().lower()
             with accounts() as conn:
                 unit = conn.execute("SELECT * FROM unidade_login WHERE login = ?", (username,)).fetchone()
-            if unit and check_password_hash(unit["senha_hash"], request.form.get("senha") or ""):
+            if unit and bool(unit["is_admin"]) == admin_only and check_password_hash(unit["senha_hash"], request.form.get("senha") or ""):
                 session.clear()
                 session["unidade_id"] = unit["id"]
                 session.permanent = True
                 target = request.args.get("next", "")
                 # Somente rotas locais conhecidas podem ser destino do login.
-                allowed = {"/", "/chamar", "/painel", "/painel/compacto", "/gerar", "/senhas", "/historico", "/imprimir", "/admin"}
+                if admin_only:
+                    return redirect(url_for("web.admin"))
+                allowed = {"/", "/chamar", "/painel", "/painel/compacto", "/gerar", "/senhas", "/historico", "/imprimir"}
                 return redirect(target if target.split("?", 1)[0] in allowed else url_for("web.admin" if unit["is_admin"] else "web.chamar"))
             flash("Login ou senha incorretos.", "warning")
-    return render_template("login.html", form_token=form_token())
+    return render_template("login.html", admin_only=admin_only, form_token=form_token())
 
 
 def admin_page():
@@ -168,8 +181,9 @@ def admin_page():
 def logout():
     if not valid_form():
         return "Formulario expirado. Atualize a pagina.", 400
+    admin_only = bool(g.unidade["is_admin"])
     session.clear()
-    return redirect(url_for("auth.login"))
+    return redirect(url_for("auth.admin_login" if admin_only else "auth.login"))
 
 
 @bp.app_context_processor

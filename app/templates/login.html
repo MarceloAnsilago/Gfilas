@@ -21,8 +21,8 @@
 <body>
   <main>
     <div class="brand">GFILAS</div>
-    <h1>Entrar na unidade</h1>
-    <p>Use o login e a senha fornecidos pelo administrador.</p>
+    <h1>{{ "Entrar no admin" if admin_only else "Entrar na unidade" }}</h1>
+    <p>{{ "Informe o login e a senha do administrador." if admin_only else "Use o login e a senha fornecidos pelo administrador." }}</p>
     {% for category, message in get_flashed_messages(with_categories=true) %}
       <p class="notice" role="alert">{{ message }}</p>
     {% endfor %}

@@ -36,14 +36,26 @@ class MultiUnidadeTests(unittest.TestCase):
             client.post("/login", data={"login": name, "senha": "senha-teste", "form_token": self.token(client, "/login")})
         return result
 
+    def test_admin_credentials_are_exclusive_to_admin_login(self):
+        self.assertEqual(self.a.get("/admin").location, "/admin/login")
+        token = self.token(self.a, "/login")
+        response = self.a.post("/login", data={"login": "admin", "senha": "admin123", "form_token": token})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.a.get("/chamar").status_code, 302)
+        token = self.token(self.a, "/admin/login")
+        response = self.a.post("/admin/login", data={"login": "admin", "senha": "admin123", "form_token": token})
+        self.assertEqual(response.location, "/admin")
+        self.assertEqual(self.a.get("/chamar").location, "/admin")
+        self.assertEqual(self.a.get("/painel").location, "/admin")
+
     def test_admin_owns_registration_and_stays_logged_in(self):
         self.assertEqual(self.a.get("/cadastro").status_code, 404)
         self.assertEqual(self.a.post("/cadastro").status_code, 404)
         self.assertNotIn("Cadastrar minha unidade", self.a.get("/login").get_data(as_text=True))
         self.assertEqual(self.administrator.post("/admin", data={"nome": "Test", "login": "test", "senha": "123456"}).status_code, 200)
         self.register(self.a, "Unidade real", "unidade")
-        self.assertEqual(self.a.get("/admin").status_code, 403)
-        self.assertEqual(self.a.post("/admin", data={}).status_code, 403)
+        self.assertEqual(self.a.get("/admin").status_code, 302)
+        self.assertEqual(self.a.post("/admin", data={}).status_code, 302)
         with self.administrator.session_transaction() as sess:
             self.assertEqual(sess["unidade_id"], 1)
         page = self.administrator.get("/admin").get_data(as_text=True)
