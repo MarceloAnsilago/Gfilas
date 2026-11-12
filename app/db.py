@@ -105,6 +105,8 @@ def init_db():
 
 def obter_unidade_padrao() -> str:
     """Retorna o nome salvo da unidade ou o padrao da instalacao."""
+    if g.get("unidade") is not None:
+        return g.unidade["nome"]
     with conectar() as conn:
         row = conn.execute(
             "SELECT valor FROM configuracao WHERE chave = 'unidade_padrao'"

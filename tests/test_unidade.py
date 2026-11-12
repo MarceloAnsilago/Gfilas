@@ -26,13 +26,11 @@ class UnidadeTests(unittest.TestCase):
         self.client = self.app.test_client()
 
     def test_default_and_saved_name_reach_print_queue(self):
-        self.assertIn('value="ULSAV SMG"', self.client.get("/gerar").get_data(as_text=True))
+        self.assertNotIn('name="unidade"', self.client.get("/gerar").get_data(as_text=True))
         with patch.dict(os.environ, {"THERMAL_PRINTER_MODE": "queue"}):
             self.assertEqual(self.client.post("/senhas/imprimir/teste").status_code, 200)
-            response = self.client.post("/gerar/salvar-unidade", data={"unidade": "  Nova Unidade  "})
-            self.assertEqual(response.status_code, 302)
-            # A different browser session reads the same persisted setting.
-            self.assertIn('value="Nova Unidade"', self.app.test_client().get("/gerar").get_data(as_text=True))
+            with self.app.app_context():
+                db.salvar_unidade_padrao("Nova Unidade")
             self.assertEqual(self.client.post("/senhas/imprimir/normal").status_code, 200)
             self.assertEqual(self.client.post("/senhas/imprimir/teste").status_code, 200)
         with self.app.app_context(), db.conectar() as conn:
@@ -56,8 +54,8 @@ class UnidadeTests(unittest.TestCase):
                 self.assertNotIn("senhas-wake-lock.js", response.get_data(as_text=True))
 
     def test_blank_save_keeps_name_and_batch_uses_saved_default(self):
-        self.client.post("/gerar/salvar-unidade", data={"unidade": "Unidade Salva"})
-        self.client.post("/gerar/salvar-unidade", data={"unidade": "   "})
+        with self.app.app_context():
+            db.salvar_unidade_padrao("Unidade Salva")
         self.client.post("/gerar", data={"senha_inicial": "1", "senha_final": "1", "data_execucao": "2026-11-04"})
         with self.app.app_context(), db.conectar() as conn:
             self.assertEqual(db.obter_unidade_padrao(), "Unidade Salva")

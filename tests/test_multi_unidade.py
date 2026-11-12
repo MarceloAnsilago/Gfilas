@@ -36,6 +36,25 @@ class MultiUnidadeTests(unittest.TestCase):
             client.post("/login", data={"login": name, "senha": "senha-teste", "form_token": self.token(client, "/login")})
         return result
 
+    def test_generation_and_all_printing_use_authenticated_unit(self):
+        self.register(self.a, "Unidade real", "real")
+        page = self.a.get("/gerar").get_data(as_text=True)
+        self.assertNotIn('name="unidade"', page)
+        self.assertEqual(self.a.post("/gerar/salvar-unidade", data={"unidade": "Outra"}).status_code, 404)
+        response = self.a.post("/gerar", data={"unidade": "Outra", "senha_inicial": "1", "senha_final": "1", "data_execucao": "2026-11-04"})
+        self.assertEqual(response.status_code, 302)
+        page = self.a.get("/imprimir?data=2026-11-04").get_data(as_text=True)
+        self.assertIn("Unidade real", page)
+        self.assertNotIn("Outra", page)
+        self.assertTrue(self.a.post("/senhas/imprimir/normal", data={"unidade": "Outra"}).get_json()["ok"])
+        self.assertTrue(self.a.post("/senhas/imprimir/teste").get_json()["ok"])
+        with self.app.app_context(), db.conectar() as conn:
+            self.assertEqual({row["unidade"] for row in conn.execute("SELECT unidade FROM senha")}, {"Unidade real"})
+            self.assertEqual({row["unidade"] for row in conn.execute("SELECT unidade FROM print_job")}, {"Unidade real"})
+        with patch("app.routes.printer.printer_mode", return_value="local"), patch("app.routes.printer.imprimir_senha", return_value={"mode": "local"}) as printer:
+            self.assertTrue(self.a.post("/senhas/imprimir/teste").get_json()["ok"])
+            self.assertEqual(printer.call_args.kwargs["unidade"], "Unidade real")
+
     def test_unit_selector_lists_units_only_and_preserves_failed_selection(self):
         empty = self.a.get("/login").get_data(as_text=True)
         self.assertIn("Nenhuma unidade cadastrada", empty)
