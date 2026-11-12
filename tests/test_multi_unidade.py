@@ -31,9 +31,9 @@ class MultiUnidadeTests(unittest.TestCase):
         return re.search(r'name="form_token" value="([^"]+)"', html).group(1)
 
     def register(self, client, name, login):
-        result = self.administrator.post("/admin", data={"nome": name, "login": login, "senha": "senha-teste", "form_token": self.token(self.administrator, "/admin")})
+        result = self.administrator.post("/admin", data={"nome": name, "senha": "senha-teste", "form_token": self.token(self.administrator, "/admin")})
         if result.status_code == 302:
-            client.post("/login", data={"login": login, "senha": "senha-teste", "form_token": self.token(client, "/login")})
+            client.post("/login", data={"login": name, "senha": "senha-teste", "form_token": self.token(client, "/login")})
         return result
 
     def test_admin_owns_registration_and_stays_logged_in(self):
@@ -63,8 +63,8 @@ class MultiUnidadeTests(unittest.TestCase):
         self.assertEqual(self.a.post("/logout", data={"form_token": token}).status_code, 302)
         self.assertEqual(self.a.get("/chamar").status_code, 302)
         token = self.token(self.a, "/login")
-        self.assertIn("incorretos", self.a.post("/login", data={"login": "saomiguel", "senha": "errada", "form_token": token}).get_data(as_text=True))
-        self.assertEqual(self.a.post("/login?next=//example.com", data={"login": "saomiguel", "senha": "senha-teste", "form_token": token}).location, "/chamar")
+        self.assertIn("incorretos", self.a.post("/login", data={"login": "São Miguel", "senha": "errada", "form_token": token}).get_data(as_text=True))
+        self.assertEqual(self.a.post("/login?next=//example.com", data={"login": "São Miguel", "senha": "senha-teste", "form_token": token}).location, "/chamar")
         self.assertEqual(self.a.get("/painel").status_code, 200)
 
     def test_two_units_isolate_numbers_calls_events_and_print_jobs(self):
@@ -109,7 +109,7 @@ class MultiUnidadeTests(unittest.TestCase):
         self.register(self.b, "Santana", "santana")
         self.assertEqual(self.b.get("/painel/status").get_json()["proximas_senhas"], [])
         anonymous = self.app.test_client()
-        self.assertIn("ja esta em uso", self.register(anonymous, "Outra", "saomiguel").get_data(as_text=True))
+        self.assertIn("ja esta em uso", self.register(anonymous, "SÃO MIGUEL", "saomiguel").get_data(as_text=True))
         with self.app.app_context(), accounts() as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM unidade_login").fetchone()[0], 3)
 

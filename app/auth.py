@@ -3,7 +3,6 @@ from contextlib import contextmanager
 from pathlib import Path
 import hmac
 import os
-import re
 import secrets
 import sqlite3
 from threading import Lock
@@ -132,12 +131,12 @@ def login():
 def admin_page():
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip()
-        username = (request.form.get("login") or "").strip().lower()
+        username = nome.lower()
         password = request.form.get("senha") or ""
         if not valid_form():
             flash("Atualize a pagina e tente novamente.", "warning")
-        elif not nome or len(nome) > 100 or not re.fullmatch(r"[a-z0-9_.-]{3,50}", username) or not 6 <= len(password) <= 200:
-            flash("Informe o nome, um login de 3 a 50 caracteres (letras sem acentos, numeros, ponto, hifen ou sublinhado) e uma senha de pelo menos 6 caracteres.", "warning")
+        elif not 3 <= len(nome) <= 100 or not 6 <= len(password) <= 200:
+            flash("Informe um nome de unidade de 3 a 100 caracteres e uma senha de pelo menos 6 caracteres.", "warning")
         else:
             try:
                 with accounts() as conn:

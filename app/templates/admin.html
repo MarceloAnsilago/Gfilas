@@ -46,8 +46,7 @@
         <input type="hidden" name="form_token" value="{{ form_token }}">
         <label for="nome">Nome da unidade</label>
         <input id="nome" name="nome" required maxlength="100" autocomplete="organization" value="{{ request.form.get('nome', '') }}">
-        <label for="login">Login da unidade</label>
-        <input id="login" name="login" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_.\-]{3,50}" autocomplete="off" value="{{ request.form.get('login', '') }}">
+        <p>O nome da unidade também será o login de acesso.</p>
         <label for="senha">Senha da unidade</label>
         <input id="senha" name="senha" type="password" required minlength="6" maxlength="200" autocomplete="new-password">
         <button type="submit" class="primary">Cadastrar unidade</button>

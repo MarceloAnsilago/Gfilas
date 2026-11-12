@@ -32,7 +32,7 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 
 ### Login por unidade
 
-- Entre como administrador em `/login` e cadastre nome, login e senha das unidades em `/admin`. O cadastro publico foi removido. Cada unidade usa um login compartilhado, inclusive nos computadores de atendimento e na TV do painel.
+- Entre como administrador em `/login` e cadastre nome e senha das unidades (o nome tambem e o login) em `/admin`. O cadastro publico foi removido. Cada unidade usa um login compartilhado, inclusive nos computadores de atendimento e na TV do painel.
 - **Cadastre primeiro a unidade que ja utiliza o sistema.** A primeira conta recebe o banco existente, com suas filas e historico. As demais comecam com bancos vazios.
 - Todas as telas exigem login. A fila, as chamadas, os contadores, o historico, as configuracoes e os eventos do painel ficam separados por unidade.
 - Use **Sair** para trocar de unidade. Abas do mesmo perfil do navegador compartilham o login; para usar duas unidades simultaneamente, utilize perfis separados.
