@@ -28,6 +28,18 @@
   </header>
   <main>
     <p class="intro">Acesse as ferramentas de gerenciamento e as telas de atendimento.</p>
+    {% if unidade_conectada %}
+    <p>Unidade: <strong>{{ unidade_conectada.nome }}</strong></p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="form_token" value="{{ auth_form_token() }}">
+      <button type="submit">Sair da unidade</button>
+    </form>
+    <details style="margin: 24px 0;">
+      <summary>Configuração do agente de impressão desta unidade</summary>
+      <p>Use este valor em PRINT_AGENT_TOKEN no computador da impressora:</p>
+      <code style="overflow-wrap: anywhere;">{{ unidade_conectada.print_token }}</code>
+    </details>
+    {% endif %}
     <nav class="cards" aria-label="Ferramentas do sistema">
       {% for endpoint, title, description in [
         ('web.gerar_senhas', 'Gerar senhas', 'Prepare as senhas para o atendimento.'),

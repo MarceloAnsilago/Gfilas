@@ -18,6 +18,7 @@ ultima_senha.db
 !.env.example
 secrets.*
 *.key
+*.session_secret
 *.pem
 
 # SO/Editor

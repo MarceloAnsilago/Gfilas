@@ -5,7 +5,7 @@ import os
 import json
 from urllib.parse import parse_qs, urlparse
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify, Response, current_app
+from flask import Blueprint, flash, redirect, render_template, request, url_for, session, jsonify, Response, current_app, g
 
 from . import db, printer
 
@@ -556,12 +556,15 @@ def painel_status():
 @bp.route("/painel/events")
 def painel_events():
     app = current_app._get_current_object()
-    events = app.extensions["painel_events"]
+    events = g.get("painel_events", app.extensions["painel_events"])
+    db_path = g.get("db_path")
 
     def load_snapshot():
         # Apenas a leitura precisa do contexto; nao retem a requisicao
         # ou uma conexao SQLite durante a espera por notificacoes.
         with app.app_context():
+            if db_path is not None:
+                g.db_path = db_path
             return db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS)
 
     return Response(
@@ -657,12 +660,14 @@ def _parse_int_from_form(form, campo, default):
 
 
 def _notify_painel():
-    current_app.extensions["painel_events"].publish(
+    g.get("painel_events", current_app.extensions["painel_events"]).publish(
         lambda: db.obter_painel_status_snapshot(MAX_PAINEL_ULTIMAS)
     )
 
 
 def _validar_print_agent():
+    if g.get("unidade") is not None:
+        return None  # O middleware ja validou o token exclusivo da unidade.
     token_cfg = (os.getenv("PRINT_AGENT_TOKEN") or "").strip()
     if not token_cfg:
         return jsonify({"ok": False, "message": "PRINT_AGENT_TOKEN nao configurado."}), 503

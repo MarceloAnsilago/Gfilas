@@ -1,7 +1,7 @@
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from flask import current_app as app
+from flask import current_app as app, g
 from datetime import datetime, timedelta, time
 import pytz
 
@@ -24,7 +24,7 @@ COLUNAS = (
 @contextmanager
 def conectar():
     """Abre conexão SQLite"""
-    db_path = Path(app.config["DB_PATH"])
+    db_path = Path(g.get("db_path", app.config["DB_PATH"]))
     db_path_str = str(db_path)
     if db_path_str and db_path_str != ":memory:":
         db_path.parent.mkdir(parents=True, exist_ok=True)

@@ -8,13 +8,15 @@ from pathlib import Path
 from . import db
 from .painel_events import PainelEvents
 
-def create_app():
+def create_app(test_config=None):
     # carrega o .env da RAIZ do projeto (…/SenhasFlask/.env)
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
     app = Flask(__name__)
     app.extensions["painel_events"] = PainelEvents()
     app.config.from_object("config.Config")
+    if test_config is not None:
+        app.config.update(test_config)
 
     if Bootstrap is not None:
         try:
@@ -26,4 +28,6 @@ def create_app():
         db.init_db()
         from .routes import bp
         app.register_blueprint(bp)  # sem prefixo, rotas já ficam em /, /gerar, /imprimir, etc.
+        from .auth import init_auth
+        init_auth(app)
         return app

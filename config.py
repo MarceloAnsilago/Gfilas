@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class Config:
     # Chave secreta do Flask
-    SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
+    SECRET_KEY = os.getenv("SECRET_KEY")
 
     # Caminho do banco — relativo ou absoluto
     ENV_DB = os.getenv("PAINEL_DB_PATH", "ultima_senha.db")

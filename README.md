@@ -30,6 +30,18 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 
 ## Deploy (Fly.io)
 
+### Login por unidade
+
+- Acesse `/login` e use **Cadastrar minha unidade** para definir nome, login e senha. Cada unidade usa um login compartilhado, inclusive nos computadores de atendimento e na TV do painel.
+- **Cadastre primeiro a unidade que ja utiliza o sistema.** A primeira conta recebe o banco existente, com suas filas e historico. As demais comecam com bancos vazios.
+- Todas as telas exigem login. A fila, as chamadas, os contadores, o historico, as configuracoes e os eventos do painel ficam separados por unidade.
+- Use **Sair** para trocar de unidade. Abas do mesmo perfil do navegador compartilham o login; para usar duas unidades simultaneamente, utilize perfis separados.
+- `/admin` continua acessivel apenas pela URL e mostra as ferramentas da unidade conectada. Nao existe perfil de administrador global nesta versao.
+- Para impressao remota, copie o `PRINT_AGENT_TOKEN` mostrado no `/admin` da unidade e configure-o no agente daquele computador. O token antigo do ambiente e mantido somente para a primeira unidade.
+- O arquivo definido em `PAINEL_DB_PATH` guarda o cadastro de logins e os dados da primeira unidade. Os bancos adicionais ficam ao lado dele, na pasta `<nome_do_banco>_unidades`, identificados por ID. Inclua essa pasta no backup e no volume persistente do servidor.
+- As senhas sao armazenadas com hash. Defina uma `SECRET_KEY` secreta para as sessoes; sem uma chave personalizada, o app gera um arquivo `.session_secret` ao lado do banco, que tambem deve persistir entre reinicios.
+- Reinicie o servidor depois de instalar a atualizacao. O agente de impressao pode continuar funcionando por token, sem login de navegador.
+
 ### Painel em tempo real (SSE)
 
 O `/painel` recebe chamadas, rechamadas e encerramentos por `/painel/events`, sem consultar `/painel/status` a cada segundo. O servidor consulta o SQLite ao abrir a conexao e ao alterar as senhas; os sinais de manutencao da conexao nao consultam o banco. Ao reconectar, o painel recebe o estado atual. Anuncios antigos ocorridos durante uma queda nao sao reproduzidos em sequencia.

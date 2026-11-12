@@ -160,6 +160,15 @@
       </ul>
     </nav>
     <main class="layout-main p-4 flex-grow-1" style="margin-left: 230px;">
+      {% if unidade_conectada %}
+      <div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+        <strong>{{ unidade_conectada.nome }}</strong>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+          <input type="hidden" name="form_token" value="{{ auth_form_token() }}">
+          <button class="btn btn-outline-secondary btn-sm" type="submit">Sair</button>
+        </form>
+      </div>
+      {% endif %}
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
