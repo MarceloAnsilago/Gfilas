@@ -72,8 +72,11 @@ class MultiUnidadeTests(unittest.TestCase):
         token = self.token(self.a, "/admin/login")
         response = self.a.post("/admin/login", data={"login": "admin", "senha": "admin123", "form_token": token})
         self.assertEqual(response.location, "/admin")
-        self.assertEqual(self.a.get("/chamar").location, "/admin")
-        self.assertEqual(self.a.get("/painel").location, "/admin")
+        self.assertEqual(self.a.get("/chamar").location, "/login?next=/chamar")
+        self.assertEqual(self.a.get("/painel").location, "/login?next=/painel")
+        page = self.a.get("/chamar", follow_redirects=True)
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('name="login" required', page.get_data(as_text=True))
 
     def test_admin_owns_registration_and_stays_logged_in(self):
         self.assertEqual(self.a.get("/cadastro").status_code, 404)

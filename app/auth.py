@@ -96,7 +96,9 @@ def require_unit():
     if request.endpoint == "web.admin" and not unit["is_admin"]:
         return redirect(url_for("auth.admin_login"))
     if unit["is_admin"] and request.endpoint not in {"web.admin", "auth.logout"}:
-        return redirect(url_for("web.admin"))
+        if request.path.endswith(("/status", "/events")) or request.method != "GET":
+            return jsonify(ok=False, message="Entre com o login da unidade."), 401
+        return redirect(url_for("auth.login", next=request.path))
 
 
 def form_token():
