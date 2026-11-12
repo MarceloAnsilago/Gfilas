@@ -55,6 +55,9 @@ def init_auth(app):
             id INTEGER PRIMARY KEY, nome TEXT NOT NULL, login TEXT NOT NULL UNIQUE,
             senha_hash TEXT NOT NULL, legacy INTEGER NOT NULL DEFAULT 0,
             print_token TEXT NOT NULL UNIQUE)""")
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(unidade_login)")}
+        if "is_admin" not in columns:
+            conn.execute("ALTER TABLE unidade_login ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
     app.extensions["unidades_lock"] = Lock()
     app.extensions["unidades_events"] = {}
     app.register_blueprint(bp)
@@ -119,7 +122,7 @@ def login():
                 target = request.args.get("next", "")
                 # Somente rotas locais conhecidas podem ser destino do login.
                 allowed = {"/", "/chamar", "/painel", "/painel/compacto", "/gerar", "/senhas", "/historico", "/imprimir", "/admin"}
-                return redirect(target if target.split("?", 1)[0] in allowed else url_for("web.chamar"))
+                return redirect(target if target.split("?", 1)[0] in allowed else url_for("web.admin" if unit["is_admin"] else "web.chamar"))
             flash("Login ou senha incorretos.", "warning")
     return render_template("login.html", cadastro=False, form_token=form_token())
 
@@ -138,7 +141,7 @@ def cadastro():
             try:
                 with accounts() as conn:
                     conn.execute("BEGIN IMMEDIATE")
-                    first = conn.execute("SELECT 1 FROM unidade_login LIMIT 1").fetchone() is None
+                    first = conn.execute("SELECT 1 FROM unidade_login WHERE is_admin = 0 LIMIT 1").fetchone() is None
                     token = (os.getenv("PRINT_AGENT_TOKEN") or "").strip() if first else ""
                     cursor = conn.execute(
                         "INSERT INTO unidade_login (nome, login, senha_hash, legacy, print_token) VALUES (?, ?, ?, ?, ?)",
@@ -155,7 +158,7 @@ def cadastro():
             except sqlite3.IntegrityError:
                 flash("Este login ja esta em uso. Escolha outro.", "warning")
     with accounts() as conn:
-        primeira = conn.execute("SELECT 1 FROM unidade_login LIMIT 1").fetchone() is None
+        primeira = conn.execute("SELECT 1 FROM unidade_login WHERE is_admin = 0 LIMIT 1").fetchone() is None
     return render_template("login.html", cadastro=True, primeira=primeira, form_token=form_token())
 
 
