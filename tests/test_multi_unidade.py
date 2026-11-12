@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from app import create_app, db
 from app.auth import accounts
+from werkzeug.security import generate_password_hash
 
 
 class MultiUnidadeTests(unittest.TestCase):
@@ -17,6 +18,11 @@ class MultiUnidadeTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
         self.app = create_app({"TESTING": True, "SECRET_KEY": "test-secret", "DB_PATH": str(Path(self.directory.name) / "original.db")})
+        with self.app.app_context(), accounts() as conn:
+            conn.execute("INSERT INTO unidade_login (nome, login, senha_hash, legacy, print_token, is_admin) VALUES (?, ?, ?, 0, ?, 1)", ("Administrador", "admin", generate_password_hash("admin123"), "admin-token"))
+        self.administrator = self.app.test_client()
+        with self.administrator.session_transaction() as sess:
+            sess["unidade_id"] = 1
         self.a = self.app.test_client()
         self.b = self.app.test_client()
 
@@ -25,7 +31,24 @@ class MultiUnidadeTests(unittest.TestCase):
         return re.search(r'name="form_token" value="([^"]+)"', html).group(1)
 
     def register(self, client, name, login):
-        return client.post("/cadastro", data={"nome": name, "login": login, "senha": "senha-teste", "form_token": self.token(client, "/cadastro")})
+        result = self.administrator.post("/admin", data={"nome": name, "login": login, "senha": "senha-teste", "form_token": self.token(self.administrator, "/admin")})
+        if result.status_code == 302:
+            client.post("/login", data={"login": login, "senha": "senha-teste", "form_token": self.token(client, "/login")})
+        return result
+
+    def test_admin_owns_registration_and_stays_logged_in(self):
+        self.assertEqual(self.a.get("/cadastro").status_code, 404)
+        self.assertEqual(self.a.post("/cadastro").status_code, 404)
+        self.assertNotIn("Cadastrar minha unidade", self.a.get("/login").get_data(as_text=True))
+        self.assertEqual(self.administrator.post("/admin", data={"nome": "Test", "login": "test", "senha": "123456"}).status_code, 200)
+        self.register(self.a, "Unidade real", "unidade")
+        self.assertEqual(self.a.get("/admin").status_code, 403)
+        self.assertEqual(self.a.post("/admin", data={}).status_code, 403)
+        with self.administrator.session_transaction() as sess:
+            self.assertEqual(sess["unidade_id"], 1)
+        page = self.administrator.get("/admin").get_data(as_text=True)
+        self.assertIn("Unidade real", page)
+        self.assertNotIn('href="/admin"', self.a.get("/chamar").get_data(as_text=True))
 
     def test_routes_require_login_and_credentials_are_hashed(self):
         for route in ("/", "/admin", "/chamar", "/painel", "/senhas", "/gerar", "/historico"):
@@ -34,9 +57,9 @@ class MultiUnidadeTests(unittest.TestCase):
         self.assertEqual(self.a.post("/gerar").status_code, 401)
         self.assertEqual(self.register(self.a, "São Miguel", "saomiguel").status_code, 302)
         with self.app.app_context(), accounts() as conn:
-            row = conn.execute("SELECT * FROM unidade_login").fetchone()
+            row = conn.execute("SELECT * FROM unidade_login WHERE is_admin = 0").fetchone()
             self.assertNotEqual(row["senha_hash"], "senha-teste")
-        token = self.token(self.a, "/admin")
+        token = self.token(self.a, "/chamar")
         self.assertEqual(self.a.post("/logout", data={"form_token": token}).status_code, 302)
         self.assertEqual(self.a.get("/chamar").status_code, 302)
         token = self.token(self.a, "/login")
@@ -64,13 +87,13 @@ class MultiUnidadeTests(unittest.TestCase):
         self.assertIsNone(status_b["senha_atual"])
         self.assertEqual(status_b["proximas_senhas"][0]["unidade"], "Santana")
         events = self.app.extensions["unidades_events"]
-        self.assertEqual(events[1].revision, 2)
-        self.assertEqual(events[2].revision, 1)
+        self.assertEqual(events[2].revision, 2)
+        self.assertEqual(events[3].revision, 1)
         # Mesmo com IDs iguais nos bancos, uma tentativa de encerrar nao afeta a outra unidade.
         self.b.post("/historico", data={"encerrar_id": emitted_a["id"], "acao": "compareceu"})
         self.assertEqual(self.a.get("/painel/status").get_json()["senha_atual"]["status"], "aberto")
         with self.app.app_context(), accounts() as conn:
-            units = conn.execute("SELECT * FROM unidade_login ORDER BY id").fetchall()
+            units = conn.execute("SELECT * FROM unidade_login WHERE is_admin = 0 ORDER BY id").fetchall()
         for unit in units:
             agent = self.app.test_client()
             result = agent.post("/print-agent/jobs/claim", headers={"X-Print-Agent-Token": unit["print_token"]})
@@ -88,7 +111,7 @@ class MultiUnidadeTests(unittest.TestCase):
         anonymous = self.app.test_client()
         self.assertIn("ja esta em uso", self.register(anonymous, "Outra", "saomiguel").get_data(as_text=True))
         with self.app.app_context(), accounts() as conn:
-            self.assertEqual(conn.execute("SELECT COUNT(*) FROM unidade_login").fetchone()[0], 2)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM unidade_login").fetchone()[0], 3)
 
 
 if __name__ == "__main__":

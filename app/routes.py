@@ -44,9 +44,10 @@ def index():
     return render_template("index.html")
 
 
-@bp.route("/admin")
+@bp.route("/admin", methods=["GET", "POST"])
 def admin():
-    return render_template("admin.html")
+    from .auth import admin_page
+    return admin_page()
 
 
 @bp.route("/chamar", methods=["GET", "POST"])

@@ -32,12 +32,12 @@ O SQLite (`ultima_senha.db`) e criado automaticamente quando o aplicativo inicia
 
 ### Login por unidade
 
-- Acesse `/login` e use **Cadastrar minha unidade** para definir nome, login e senha. Cada unidade usa um login compartilhado, inclusive nos computadores de atendimento e na TV do painel.
+- Entre como administrador em `/login` e cadastre nome, login e senha das unidades em `/admin`. O cadastro publico foi removido. Cada unidade usa um login compartilhado, inclusive nos computadores de atendimento e na TV do painel.
 - **Cadastre primeiro a unidade que ja utiliza o sistema.** A primeira conta recebe o banco existente, com suas filas e historico. As demais comecam com bancos vazios.
 - Todas as telas exigem login. A fila, as chamadas, os contadores, o historico, as configuracoes e os eventos do painel ficam separados por unidade.
 - Use **Sair** para trocar de unidade. Abas do mesmo perfil do navegador compartilham o login; para usar duas unidades simultaneamente, utilize perfis separados.
-- `/admin` continua acessivel apenas pela URL e mostra as ferramentas da unidade conectada. Nao existe perfil de administrador global nesta versao.
-- Para impressao remota, copie o `PRINT_AGENT_TOKEN` mostrado no `/admin` da unidade e configure-o no agente daquele computador. O token antigo do ambiente e mantido somente para a primeira unidade.
+- `/admin` continua acessivel apenas pela URL e exige uma conta de administrador. O formulario cadastra unidades sem trocar a sessao do administrador. A lista exibe o nome, o login e o token de impressao de cada unidade.
+- Para impressao remota, copie o `PRINT_AGENT_TOKEN` mostrado na lista de unidades no `/admin` e configure-o no agente daquele computador. O token antigo do ambiente e mantido somente para a primeira unidade.
 - O arquivo definido em `PAINEL_DB_PATH` guarda o cadastro de logins e os dados da primeira unidade. Os bancos adicionais ficam ao lado dele, na pasta `<nome_do_banco>_unidades`, identificados por ID. Inclua essa pasta no backup e no volume persistente do servidor.
 - As senhas sao armazenadas com hash. Defina uma `SECRET_KEY` secreta para as sessoes; sem uma chave personalizada, o app gera um arquivo `.session_secret` ao lado do banco, que tambem deve persistir entre reinicios.
 - Reinicie o servidor depois de instalar a atualizacao. O agente de impressao pode continuar funcionando por token, sem login de navegador.

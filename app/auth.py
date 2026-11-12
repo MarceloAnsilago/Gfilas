@@ -73,7 +73,7 @@ def private_response(response):
 
 
 def require_unit():
-    if request.endpoint in {"auth.login", "auth.cadastro", "static"} or request.endpoint is None:
+    if request.endpoint in {"auth.login", "static"} or request.endpoint is None:
         return None
     if request.path.startswith("/print-agent/"):
         token = (request.headers.get("X-Print-Agent-Token") or "").strip()
@@ -94,6 +94,8 @@ def require_unit():
             return jsonify(ok=False, message="Entre com o login da unidade."), 401
         return redirect(url_for("auth.login", next=request.full_path))
     select_unit(unit)
+    if request.endpoint == "web.admin" and not unit["is_admin"]:
+        return "Acesso exclusivo do administrador.", 403
 
 
 def form_token():
@@ -124,11 +126,10 @@ def login():
                 allowed = {"/", "/chamar", "/painel", "/painel/compacto", "/gerar", "/senhas", "/historico", "/imprimir", "/admin"}
                 return redirect(target if target.split("?", 1)[0] in allowed else url_for("web.admin" if unit["is_admin"] else "web.chamar"))
             flash("Login ou senha incorretos.", "warning")
-    return render_template("login.html", cadastro=False, form_token=form_token())
+    return render_template("login.html", form_token=form_token())
 
 
-@bp.route("/cadastro", methods=["GET", "POST"])
-def cadastro():
+def admin_page():
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip()
         username = (request.form.get("login") or "").strip().lower()
@@ -148,18 +149,20 @@ def cadastro():
                         (nome, username, generate_password_hash(password), int(first), token or secrets.token_urlsafe(32)),
                     )
                     unit = conn.execute("SELECT * FROM unidade_login WHERE id = ?", (cursor.lastrowid,)).fetchone()
-                select_unit(unit)
-                db.init_db()
-                db.salvar_unidade_padrao(nome)
-                session.clear()
-                session["unidade_id"] = unit["id"]
-                session.permanent = True
-                return redirect(url_for("web.chamar"))
+                administrator = dict(g.unidade)
+                try:
+                    select_unit(unit)
+                    db.init_db()
+                    db.salvar_unidade_padrao(nome)
+                finally:
+                    select_unit(administrator)
+                flash("Unidade cadastrada com sucesso.", "success")
+                return redirect(url_for("web.admin"))
             except sqlite3.IntegrityError:
                 flash("Este login ja esta em uso. Escolha outro.", "warning")
     with accounts() as conn:
-        primeira = conn.execute("SELECT 1 FROM unidade_login WHERE is_admin = 0 LIMIT 1").fetchone() is None
-    return render_template("login.html", cadastro=True, primeira=primeira, form_token=form_token())
+        unidades = [dict(row) for row in conn.execute("SELECT id, nome, login, print_token FROM unidade_login WHERE is_admin = 0 ORDER BY nome")]
+    return render_template("admin.html", unidades=unidades, form_token=form_token())
 
 
 @bp.post("/logout")

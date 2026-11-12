@@ -16,6 +16,11 @@
     .card { display: block; background: #fff; border: 1px solid #dce3ef; border-radius: 16px; padding: 24px; text-decoration: none; color: inherit; transition: border-color .2s, box-shadow .2s; }
     .card:hover { border-color: #2563eb; box-shadow: 0 8px 24px #17203312; }
     .card:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; }
+    input { display: block; width: 100%; max-width: 520px; padding: 12px; border: 1px solid #aebbd0; border-radius: 8px; font: inherit; }
+    button { padding: 10px 18px; border: 1px solid #aebbd0; border-radius: 8px; cursor: pointer; font: inherit; }
+    .primary { margin-top: 20px; background: #2563eb; color: white; border: 0; }
+    .notice { padding: 14px; background: #e7efff; border-radius: 8px; }
     h2 { margin: 0 0 10px; font-size: 1.15rem; }
     .card p { margin: 0; color: #526078; line-height: 1.6; }
     .open { display: inline-block; margin-top: 20px; color: #2563eb; font-weight: 600; }
@@ -27,19 +32,40 @@
     <h1>Administração</h1>
   </header>
   <main>
-    <p class="intro">Acesse as ferramentas de gerenciamento e as telas de atendimento.</p>
-    {% if unidade_conectada %}
-    <p>Unidade: <strong>{{ unidade_conectada.nome }}</strong></p>
+    <p class="intro">Cadastre as unidades e defina os logins de acesso.</p>
     <form method="post" action="{{ url_for('auth.logout') }}">
       <input type="hidden" name="form_token" value="{{ auth_form_token() }}">
-      <button type="submit">Sair da unidade</button>
+      <button type="submit">Sair</button>
     </form>
-    <details style="margin: 24px 0;">
-      <summary>Configuração do agente de impressão desta unidade</summary>
-      <p>Use este valor em PRINT_AGENT_TOKEN no computador da impressora:</p>
-      <code style="overflow-wrap: anywhere;">{{ unidade_conectada.print_token }}</code>
-    </details>
-    {% endif %}
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="notice" role="alert">{{ message }}</p>
+    {% endfor %}
+    <section class="card" style="margin: 24px 0;">
+      <h2>Cadastrar unidade</h2>
+      <form method="post" action="{{ url_for('web.admin') }}">
+        <input type="hidden" name="form_token" value="{{ form_token }}">
+        <label for="nome">Nome da unidade</label>
+        <input id="nome" name="nome" required maxlength="100" autocomplete="organization" value="{{ request.form.get('nome', '') }}">
+        <label for="login">Login da unidade</label>
+        <input id="login" name="login" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_.\-]{3,50}" autocomplete="off" value="{{ request.form.get('login', '') }}">
+        <label for="senha">Senha da unidade</label>
+        <input id="senha" name="senha" type="password" required minlength="6" maxlength="200" autocomplete="new-password">
+        <button type="submit" class="primary">Cadastrar unidade</button>
+      </form>
+    </section>
+    <section style="margin-bottom: 32px;">
+      <h2>Unidades cadastradas</h2>
+      {% for unidade in unidades %}
+      <article class="card" style="margin-top: 12px;">
+        <h2>{{ unidade.nome }}</h2>
+        <p>Login: <strong>{{ unidade.login }}</strong></p>
+        <details style="margin-top: 12px;">
+          <summary>Token do agente de impress?o</summary>
+          <code style="overflow-wrap: anywhere;">{{ unidade.print_token }}</code>
+        </details>
+      </article>
+      {% else %}<p>Nenhuma unidade cadastrada.</p>{% endfor %}
+    </section>
     <nav class="cards" aria-label="Ferramentas do sistema">
       {% for endpoint, title, description in [
         ('web.gerar_senhas', 'Gerar senhas', 'Prepare as senhas para o atendimento.'),
