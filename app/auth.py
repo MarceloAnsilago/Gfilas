@@ -138,7 +138,13 @@ def login_page(admin_only):
                 allowed = {"/", "/chamar", "/painel", "/painel/compacto", "/gerar", "/senhas", "/historico", "/imprimir"}
                 return redirect(target if target.split("?", 1)[0] in allowed else url_for("web.admin" if unit["is_admin"] else "web.chamar"))
             flash("Login ou senha incorretos.", "warning")
-    return render_template("login.html", admin_only=admin_only, form_token=form_token())
+    unidades = []
+    if not admin_only:
+        with accounts() as conn:
+            unidades = [dict(row) for row in conn.execute(
+                "SELECT nome, login FROM unidade_login WHERE is_admin = 0 ORDER BY nome COLLATE NOCASE"
+            )]
+    return render_template("login.html", admin_only=admin_only, unidades=unidades, form_token=form_token())
 
 
 def admin_page():

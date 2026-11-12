@@ -36,6 +36,24 @@ class MultiUnidadeTests(unittest.TestCase):
             client.post("/login", data={"login": name, "senha": "senha-teste", "form_token": self.token(client, "/login")})
         return result
 
+    def test_unit_selector_lists_units_only_and_preserves_failed_selection(self):
+        empty = self.a.get("/login").get_data(as_text=True)
+        self.assertIn("Nenhuma unidade cadastrada", empty)
+        self.register(self.a, "Unidade Norte", "norte")
+        self.register(self.b, "Unidade Sul", "sul")
+        client = self.app.test_client()
+        page = client.get("/login").get_data(as_text=True)
+        self.assertIn('<select id="login" name="login" required', page)
+        self.assertIn('value="unidade norte"', page)
+        self.assertIn('value="unidade sul"', page)
+        self.assertNotIn('value="admin"', page)
+        self.assertNotIn('type="password" required minlength', page)
+        failed = client.post("/login", data={"login": "unidade norte", "senha": "errada", "form_token": self.token(client, "/login")}).get_data(as_text=True)
+        self.assertIn('value="unidade norte" selected', failed)
+        admin_page = client.get("/admin/login").get_data(as_text=True)
+        self.assertNotIn('<select', admin_page)
+        self.assertIn('<input id="login"', admin_page)
+
     def test_unit_password_accepts_one_character_and_has_no_length_rule(self):
         for index, password in enumerate(("1", "x" * 250)):
             name = f"Unidade {index}"

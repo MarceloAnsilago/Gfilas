@@ -12,7 +12,7 @@
     h1 { font-size: 1.7rem; margin: 12px 0; }
     p { color: #526078; line-height: 1.5; }
     label { display: block; margin: 18px 0 6px; font-weight: 600; }
-    input { width: 100%; border: 1px solid #aebbd0; border-radius: 8px; padding: 12px; font: inherit; }
+    input, select { width: 100%; border: 1px solid #aebbd0; border-radius: 8px; padding: 12px; font: inherit; background: white; }
     button { width: 100%; margin-top: 24px; background: #2563eb; color: white; border: 0; border-radius: 8px; padding: 13px; font: inherit; cursor: pointer; }
     a { color: #2158b6; }
     .notice { background: #fff4d6; padding: 12px; border-radius: 8px; }
@@ -22,17 +22,28 @@
   <main>
     <div class="brand">GFILAS</div>
     <h1>{{ "Entrar no admin" if admin_only else "Entrar na unidade" }}</h1>
-    <p>{{ "Informe o login e a senha do administrador." if admin_only else "Use o login e a senha fornecidos pelo administrador." }}</p>
+    <p>{{ "Informe o login e a senha do administrador." if admin_only else "Escolha sua unidade e digite a senha." }}</p>
     {% for category, message in get_flashed_messages(with_categories=true) %}
       <p class="notice" role="alert">{{ message }}</p>
     {% endfor %}
     <form method="post">
       <input type="hidden" name="form_token" value="{{ form_token }}">
+      {% if admin_only %}
       <label for="login">Login</label>
       <input id="login" name="login" required autocomplete="username" maxlength="100" value="{{ request.form.get('login', '') }}">
+      {% else %}
+      <label for="login">Unidade</label>
+      <select id="login" name="login" required {% if not unidades %}disabled{% endif %}>
+        <option value="">Selecione sua unidade</option>
+        {% for unidade in unidades %}
+        <option value="{{ unidade.login }}" {% if request.form.get('login', '')|trim|lower == unidade.login %}selected{% endif %}>{{ unidade.nome }}</option>
+        {% endfor %}
+      </select>
+      {% if not unidades %}<p class="notice">Nenhuma unidade cadastrada. Solicite o cadastro ao administrador.</p>{% endif %}
+      {% endif %}
       <label for="senha">Senha</label>
       <input id="senha" name="senha" type="password" required autocomplete="current-password">
-      <button type="submit">Entrar</button>
+      <button type="submit" {% if not admin_only and not unidades %}disabled{% endif %}>Entrar</button>
     </form>
 
   </main>
