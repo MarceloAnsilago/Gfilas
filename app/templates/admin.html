@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administração | Gfilas</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f8fc; color: #172033; font-family: system-ui, sans-serif; }
+    header { background: #0b1220; color: #fff; padding: 24px max(24px, calc((100% - 1100px) / 2)); }
+    header span { color: #a8b8d4; font-size: .85rem; letter-spacing: .12em; }
+    h1 { margin: 8px 0 0; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+    main { max-width: 1148px; margin: 0 auto; padding: 32px 24px; }
+    .intro { color: #526078; margin: 0 0 24px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+    .card { display: block; background: #fff; border: 1px solid #dce3ef; border-radius: 16px; padding: 24px; text-decoration: none; color: inherit; transition: border-color .2s, box-shadow .2s; }
+    .card:hover { border-color: #2563eb; box-shadow: 0 8px 24px #17203312; }
+    .card:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+    h2 { margin: 0 0 10px; font-size: 1.15rem; }
+    .card p { margin: 0; color: #526078; line-height: 1.6; }
+    .open { display: inline-block; margin-top: 20px; color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <span>GFILAS</span>
+    <h1>Administração</h1>
+  </header>
+  <main>
+    <p class="intro">Acesse as ferramentas de gerenciamento e as telas de atendimento.</p>
+    <nav class="cards" aria-label="Ferramentas do sistema">
+      {% for endpoint, title, description in [
+        ('web.gerar_senhas', 'Gerar senhas', 'Prepare as senhas para o atendimento.'),
+        ('web.chamar', 'Chamar senhas', 'Acompanhe a fila e realize as chamadas.'),
+        ('web.imprimir', 'Imprimir', 'Acesse a impressão de senhas.'),
+        ('web.historico', 'Histórico', 'Consulte os registros de atendimento.'),
+        ('web.painel', 'Painel', 'Abra o painel de chamadas.'),
+        ('web.painel_compacto', 'Painel compacto', 'Abra a versão compacta do painel.')
+      ] %}
+      <a class="card" href="{{ url_for(endpoint) }}">
+        <h2>{{ title }}</h2>
+        <p>{{ description }}</p>
+        <span class="open">Abrir &rarr;</span>
+      </a>
+      {% endfor %}
+    </nav>
+  </main>
+</body>
+</html>

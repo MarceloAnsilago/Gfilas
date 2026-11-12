@@ -44,6 +44,11 @@ def index():
     return render_template("index.html")
 
 
+@bp.route("/admin")
+def admin():
+    return render_template("admin.html")
+
+
 @bp.route("/chamar", methods=["GET", "POST"])
 def chamar():
     if request.method == "POST":
