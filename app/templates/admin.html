@@ -48,7 +48,7 @@
         <input id="nome" name="nome" required maxlength="100" autocomplete="organization" value="{{ request.form.get('nome', '') }}">
         <p>O nome da unidade também será o login de acesso.</p>
         <label for="senha">Senha da unidade</label>
-        <input id="senha" name="senha" type="password" required minlength="6" maxlength="200" autocomplete="new-password">
+        <input id="senha" name="senha" type="password" required autocomplete="new-password">
         <button type="submit" class="primary">Cadastrar unidade</button>
       </form>
     </section>

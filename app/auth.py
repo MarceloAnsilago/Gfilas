@@ -148,8 +148,8 @@ def admin_page():
         password = request.form.get("senha") or ""
         if not valid_form():
             flash("Atualize a pagina e tente novamente.", "warning")
-        elif not 3 <= len(nome) <= 100 or not 6 <= len(password) <= 200:
-            flash("Informe um nome de unidade de 3 a 100 caracteres e uma senha de pelo menos 6 caracteres.", "warning")
+        elif not 3 <= len(nome) <= 100 or not password:
+            flash("Informe um nome de unidade de 3 a 100 caracteres e uma senha.", "warning")
         else:
             try:
                 with accounts() as conn:

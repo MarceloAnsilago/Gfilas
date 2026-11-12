@@ -36,6 +36,15 @@ class MultiUnidadeTests(unittest.TestCase):
             client.post("/login", data={"login": name, "senha": "senha-teste", "form_token": self.token(client, "/login")})
         return result
 
+    def test_unit_password_accepts_one_character_and_has_no_length_rule(self):
+        for index, password in enumerate(("1", "x" * 250)):
+            name = f"Unidade {index}"
+            response = self.administrator.post("/admin", data={"nome": name, "senha": password, "form_token": self.token(self.administrator, "/admin")})
+            self.assertEqual(response.status_code, 302)
+            client = self.app.test_client()
+            response = client.post("/login", data={"login": name, "senha": password, "form_token": self.token(client, "/login")})
+            self.assertEqual(response.location, "/chamar")
+
     def test_admin_credentials_are_exclusive_to_admin_login(self):
         self.assertEqual(self.a.get("/admin").location, "/admin/login")
         token = self.token(self.a, "/login")
