@@ -56,6 +56,10 @@ def main() -> int:
     base_dir = Path(get_runtime_dir())
     setup_logging(base_dir)
 
+    if "--configurar" in sys.argv:
+        configure_printer(base_dir)
+        return 0
+
     try:
         lock_handle = acquire_single_instance_lock(base_dir)
     except RuntimeError as exc:
@@ -66,6 +70,11 @@ def main() -> int:
     try:
         config = load_desktop_config(base_dir)
         apply_config_to_environment(config)
+        if not printer.printer_ready()[0]:
+            if not configure_printer(base_dir):
+                return 0
+            config = load_desktop_config(base_dir)
+            apply_config_to_environment(config)
         validate_desktop_config(config)
 
         pronto, motivo = printer.printer_ready()
@@ -103,6 +112,53 @@ def main() -> int:
         return 1
     finally:
         release_single_instance_lock(lock_handle)
+
+
+def configure_printer(base_dir: Path) -> bool:
+    """Seleciona a impressora local sem exigir edicao manual do JSON."""
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+
+    config = load_desktop_config(base_dir)
+    root = tk.Tk()
+    root.title("Configurar impressora do Painel")
+    root.resizable(False, False)
+    frame = ttk.Frame(root, padding=20)
+    frame.pack(fill="both", expand=True)
+    ttk.Label(frame, text="Nome da impressora no Windows:").pack(anchor="w")
+    name = tk.StringVar(value=config.thermal_printer_name)
+    field = ttk.Combobox(frame, textvariable=name, values=printer.list_printer_names(), width=55)
+    field.pack(fill="x", pady=(6, 12))
+    ttk.Label(frame, text="Selecione uma impressora instalada ou digite o nome exato.").pack(anchor="w")
+    saved = False
+
+    def save():
+        nonlocal saved
+        selected = name.get().strip()
+        if selected not in printer.list_printer_names():
+            messagebox.showerror("Impressora nao encontrada", "Instale a impressora no Windows e selecione seu nome na lista.", parent=root)
+            field.configure(values=printer.list_printer_names())
+            return
+        path = base_dir / "painel_config.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
+            payload["THERMAL_PRINTER_NAME"] = selected
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            temporary.replace(path)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Falha ao salvar", str(exc), parent=root)
+            return
+        saved = True
+        root.destroy()
+
+    buttons = ttk.Frame(frame)
+    buttons.pack(anchor="e", pady=(18, 0))
+    ttk.Button(buttons, text="Cancelar", command=root.destroy).pack(side="left", padx=6)
+    ttk.Button(buttons, text="Salvar", command=save).pack(side="left")
+    field.focus_set()
+    root.mainloop()
+    return saved
 
 
 def get_runtime_dir() -> str:

@@ -101,6 +101,8 @@ O novo modo desktop abre o painel e roda o agente de impressao no mesmo processo
 
 ### Configuracao do PC
 
+Abra `Configurar Impressora.bat` na pasta `PainelPortatil` para selecionar uma impressora instalada ou digitar seu nome e clicar em **Salvar**. O nome fica salvo no `painel_config.json`. Se a impressora configurada nao for encontrada ao iniciar o painel, essa janela abre automaticamente. Instale o driver no Windows antes de selecionar a impressora e reinicie o painel depois de alterar a configuracao.
+
 Copie [painel_config.example.json](/d:/driver/Documentos/SenhasFlask/painel_config.example.json) para `painel_config.json` ao lado do executavel e ajuste:
 
 ```json

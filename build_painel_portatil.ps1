@@ -35,6 +35,13 @@ if errorlevel 1 (
 '@
 Set-Content -Path (Join-Path $portableDir 'Iniciar Painel.bat') -Value $launcher -Encoding ASCII
 
+$printerLauncher = @'
+@echo off
+cd /d "%~dp0"
+start "" /wait "%~dp0Painel.exe" --configurar
+'@
+Set-Content -Path (Join-Path $portableDir 'Configurar Impressora.bat') -Value $printerLauncher -Encoding ASCII
+
 $shortcutScript = @'
 $ErrorActionPreference = 'Stop'
 $desktop = [Environment]::GetFolderPath('Desktop')
